@@ -10,6 +10,7 @@ libraryDependencies ++=
   "com.lihaoyi" %% "upickle" % "0.9.5" ::
   "eu.timepit" %% "refined" % "0.9.14" ::
   "io.scalaland" %% "chimney" % "0.5.1" ::
+  "com.nrinaudo" %% "kantan.csv" % "0.6.0" ::
   Nil
 
 val circeVersion = "0.13.0"
