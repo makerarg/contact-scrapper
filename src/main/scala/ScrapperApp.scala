@@ -1,4 +1,5 @@
 import akka.actor.ActorSystem
+import akka.stream.{Graph, SourceShape}
 import akka.stream.scaladsl.{Flow, Sink, Source, StreamConverters}
 import akka.util.ByteString
 import eu.timepit.refined.string.Url
@@ -22,25 +23,25 @@ object ScrapperApp extends App {
    */
   LocationReader.locationSource
     .via(LocationReader.parserFlow)
-    .mapConcat(c => {
-      println(s"$c")
+    .mapConcat[RequestInfo[_]](coordinates => {
+      println(s"$coordinates")
       Seq(
-        RequestInfo[OrmiFlexContact](OrmiFlex, c),
-        RequestInfo[MegaFlexContact](MegaFlex, c))
+        RequestInfo[OrmiFlexContact](OrmiFlex, coordinates),
+        RequestInfo[MegaFlexContact](MegaFlex, coordinates))
     })
-    .map(info => {
+    .map[(geny.Readable, String)](info => {
       val url = info.source.url(info.coordinates)
       println(s"making request to $url")
       (streamingScrapper.requestStreamed(url), info.source.id)
     })
     .flatMapConcat {
       case (readable, id) =>
-        val src = readable.readBytesThrough[Source[ByteString, _]](is => {
+        val src0: Source[ByteString, _] = readable.readBytesThrough[Source[ByteString, _]](is => {
           StreamConverters.fromInputStream(() => is)
         })
         id match {
-          case OrmiFlex.id => streamingScrapper.parsingStream[OrmiFlexContact](src)
-          case MegaFlex.id => streamingScrapper.parsingStream[MegaFlexContact](src)
+          case OrmiFlex.id => streamingScrapper.parsingStream[OrmiFlexContact](src0)
+          case MegaFlex.id => streamingScrapper.parsingStream[MegaFlexContact](src0)
         }
     }
     .to(Sink.foreach(println))

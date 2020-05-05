@@ -13,13 +13,14 @@ import scala.language.postfixOps
 class StreamingScrapper(implicit actorSystem: ActorSystem) {
 
   /** Make a Source that will parse [[ByteString]]s and materialize as an [[OutputStream]]  */
-  def parsingStream[R <: RawContact](source: Source[ByteString, _])(implicit decoder: Decoder[R]): Source[R, _] = {
+  def parsingStream[R <: RawContact](source: Source[ByteString, _])(implicit decoder: Decoder[R]): Source[Contact[R], _] = {
     source
       .via(Flow.fromFunction[ByteString, ByteString]( bs => {
         println(s"Getting chunks ${bs}")
         bs
       }))
       .via(CirceStreamSupport.decode[R](AsyncParser.UnwrapArray))
+      .map(Contact(_))
   }
 
   /** Make a streamed GET request to the given url and return the source as a Readable object  */
