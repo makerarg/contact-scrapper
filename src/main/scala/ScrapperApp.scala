@@ -1,14 +1,16 @@
 import akka.actor.ActorSystem
-import akka.stream.scaladsl.{Flow, Sink, Source}
+import akka.stream.scaladsl.{Flow, Sink, Source, StreamConverters}
 import akka.util.ByteString
 import eu.timepit.refined.string.Url
 import kantan.csv.ReadResult
-import thirdparties.{MegaFlexContact, OrmiFlexContact}
+import thirdparties.{MegaFlexContact, OrmiFlexContact, RawContact}
 
 object ScrapperApp extends App {
 
   implicit val actorSystem = ActorSystem("ScrapSys")
   val streamingScrapper = new StreamingScrapper
+
+  import io.circe.generic.auto._
 
   /**
    * Flow:
@@ -26,24 +28,24 @@ object ScrapperApp extends App {
         RequestInfo[OrmiFlexContact](OrmiFlex, c),
         RequestInfo[MegaFlexContact](MegaFlex, c))
     })
-    .via(Flow.fromFunction[RequestInfo[_], geny.Readable](info => {
+    .map(info => {
       val url = info.source.url(info.coordinates)
       println(s"making request to $url")
-      streamingScrapper.requestStreamed(url)
-    }))
+      (streamingScrapper.requestStreamed(url), info.source.id)
+    })
+    .flatMapConcat {
+      case (readable, id) =>
+        val src = readable.readBytesThrough[Source[ByteString, _]](is => {
+          StreamConverters.fromInputStream(() => is)
+        })
+        id match {
+          case OrmiFlex.id => streamingScrapper.parsingStream[OrmiFlexContact](src)
+          case MegaFlex.id => streamingScrapper.parsingStream[MegaFlexContact](src)
+        }
+    }
     .to(Sink.foreach(println))
     .run()
-    /*
-    .map(readable =>
-      readable.writeBytesTo(
-        streamingScrapper
-          .parsingStream
-          .to(Sink.ignore)
-          .run
-      )
-    )
-    */
 
 }
 
-case class RequestInfo[R](source: ContactSource[R], coordinates: Coordinates)
+case class RequestInfo[R <: RawContact](source: ContactSource[R], coordinates: Coordinates)

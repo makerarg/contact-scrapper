@@ -1,33 +1,30 @@
 import java.io.OutputStream
 
 import akka.actor.ActorSystem
-import akka.stream.scaladsl.{Flow, RunnableGraph, Sink, Source, StreamConverters}
+import akka.stream.scaladsl.{Flow, Source}
 import akka.util.ByteString
-import eu.timepit.refined.string.Url
-import io.circe.generic.auto._
+import io.circe.Decoder
 import org.mdedetrich.akka.stream.support.CirceStreamSupport
 import org.typelevel.jawn.AsyncParser
-import thirdparties.{OrmiFlexContact}
+import thirdparties.RawContact
 
-import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class StreamingScrapper(implicit actorSystem: ActorSystem) {
 
   /** Make a Source that will parse [[ByteString]]s and materialize as an [[OutputStream]]  */
-  val parsingStream: Source[Unit, OutputStream] = StreamConverters.asOutputStream(20 seconds)
-    .via(Flow.fromFunction[ByteString, ByteString]( bs => {
-      println(s"Getting chunks ${bs}")
-      bs
-    }))
-    .via(CirceStreamSupport.decode[OrmiFlexContact](AsyncParser.UnwrapArray))
-    .via(Flow.fromFunction[OrmiFlexContact, Unit](contact => {
-      println(contact)
-    }))
-//    .to(Sink.ignore)
+  def parsingStream[R <: RawContact](source: Source[ByteString, _])(implicit decoder: Decoder[R]): Source[R, _] = {
+    source
+      .via(Flow.fromFunction[ByteString, ByteString]( bs => {
+        println(s"Getting chunks ${bs}")
+        bs
+      }))
+      .via(CirceStreamSupport.decode[R](AsyncParser.UnwrapArray))
+  }
 
   /** Make a streamed GET request to the given url and return the source as a Readable object  */
-  def requestStreamed(url: String): geny.Readable = requests.get
-    .stream(url, onHeadersReceived = { sh => println(s"SH arrived: $sh")})
-//    .writeBytesTo(parsingStream.run)
+  def requestStreamed(url: String): geny.Readable =
+    requests
+      .get
+      .stream(url, onHeadersReceived = { sh => println(s"SH arrived: $sh")})
 }

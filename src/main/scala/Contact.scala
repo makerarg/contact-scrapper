@@ -1,8 +1,8 @@
 import eu.timepit.refined.api._
 import eu.timepit.refined.string._
-import thirdparties.{MegaFlexContact, OrmiFlexContact}
+import thirdparties.{MegaFlexContact, OrmiFlexContact, RawContact}
 
-case class Contact[R](
+case class Contact[R <: RawContact](
   id: String,
   storeName: Option[String],
   name: String,

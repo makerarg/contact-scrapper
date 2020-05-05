@@ -15,4 +15,4 @@ case class MegaFlexContact(
   categories: String,
   visible: String,
   id_vendedores: String
-)
+) extends RawContact

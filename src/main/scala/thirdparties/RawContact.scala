@@ -1,0 +1,4 @@
+package thirdparties
+
+trait RawContact {
+}

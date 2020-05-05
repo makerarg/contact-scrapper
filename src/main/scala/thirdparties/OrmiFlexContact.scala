@@ -16,4 +16,4 @@ case class OrmiFlexContact(
   email: String,
   hours: String,
   url: String
-)
+) extends RawContact

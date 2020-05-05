@@ -1,6 +1,7 @@
-import thirdparties.{MegaFlexContact, OrmiFlexContact}
+import thirdparties.{MegaFlexContact, OrmiFlexContact, RawContact}
 
-sealed trait ContactSource[R] {
+sealed trait ContactSource[R <: RawContact] {
+  val id: String = this.getClass.getName
   val host: String
   def url(coordinates: Coordinates): String
 }
