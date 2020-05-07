@@ -1,9 +1,6 @@
 import akka.actor.ActorSystem
-import akka.stream.{Graph, SourceShape}
-import akka.stream.scaladsl.{Flow, Sink, Source, StreamConverters}
+import akka.stream.scaladsl.{Sink, Source, StreamConverters}
 import akka.util.ByteString
-import eu.timepit.refined.string.Url
-import kantan.csv.ReadResult
 import thirdparties.{MegaFlexContact, OrmiFlexContact, RawContact}
 
 object ScrapperApp extends App {
@@ -21,8 +18,8 @@ object ScrapperApp extends App {
    *  - Merge incoming streams into single [[Sink]]
    *  - Store unique contacts
    */
-  LocationReader.locationSource
-    .via(LocationReader.parserFlow)
+  LocationReader.CABALocationSource
+    .via(LocationReader.CABAParserFlow)
     .mapConcat[RequestInfo[_]](coordinates => {
       println(s"$coordinates")
       Seq(
