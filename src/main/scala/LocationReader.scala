@@ -11,16 +11,22 @@ object LocationReader {
 
   /** Iterators that will read csv lines as their respective case class */
   private val CABAReaderIterator: Iterator[ReadResult[CABAData]] =
-    new File(getClass.getResource("./provider/barrios-caba.csv").getPath)
-      .asCsvReader[CABAData](rfc)
-      .iterator
+    new File(
+      getClass
+        .getResource("./provider/barrios-caba.csv")
+        .getPath
+    ).asCsvReader[CABAData](rfc)
+    .iterator
   private val PBAReaderIterator: Iterator[ReadResult[PBAData]] =
-    new File(getClass.getResource("./provider/mapa-judicial-pba.csv").getPath)
-      .asCsvReader[PBAData](
-        rfc
-          .withHeader(true)
-          .withCellSeparator(';')
-      ).iterator
+    new File(
+      getClass
+        .getResource("./provider/mapa-judicial-pba.csv")
+        .getPath
+    ).asCsvReader[PBAData](
+      rfc
+        .withHeader(true)
+        .withCellSeparator(';')
+    ).iterator
 
   /** Map [[ReadResult]] lines to [[Coordinates]] */
   private val CABACsvLineToCoordinateParser: ReadResult[CABAData] => Coordinates = { readResult =>
