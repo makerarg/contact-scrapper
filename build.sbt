@@ -4,7 +4,7 @@ version := "0.1"
 
 scalaVersion := "2.13.2"
 
-val akkaStreamCirce = "0.13.0"
+val akkaStreamCirce = "0.6.0"
 val circeVersion = "0.13.0"
 
 libraryDependencies ++=
