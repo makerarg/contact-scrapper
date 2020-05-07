@@ -11,11 +11,11 @@ object LocationReader {
 
   /** Iterators that will read csv lines as their respective case class */
   private val CABAReaderIterator: Iterator[ReadResult[CABAData]] =
-    new File(getClass.getResource("./provider/barrios.csv").getPath)
+    new File(getClass.getResource("./provider/barrios-caba.csv").getPath)
       .asCsvReader[CABAData](rfc)
       .iterator
   private val PBAReaderIterator: Iterator[ReadResult[PBAData]] =
-    new File(getClass.getResource("./provider/mapa-judicial.csv").getPath)
+    new File(getClass.getResource("./provider/mapa-judicial-pba.csv").getPath)
       .asCsvReader[PBAData](
         rfc
           .withHeader(true)
