@@ -3,6 +3,7 @@ import java.io.File
 import akka.NotUsed
 import akka.stream.scaladsl.{Flow, Source}
 import kantan.csv._
+import model.{Coordinates, Latitude, Longitude}
 
 import scala.util.Try
 

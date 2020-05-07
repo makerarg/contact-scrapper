@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Flow, Source}
 import akka.util.ByteString
 import io.circe.Decoder
+import model.Contact
 import org.mdedetrich.akka.stream.support.CirceStreamSupport
 import org.typelevel.jawn.AsyncParser
 import thirdparties.RawContact

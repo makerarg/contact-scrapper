@@ -1,3 +1,5 @@
+package model
+
 import thirdparties.{MegaFlexContact, OrmiFlexContact, RawContact}
 
 sealed trait ContactSource[R <: RawContact] {

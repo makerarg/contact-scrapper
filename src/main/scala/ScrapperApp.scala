@@ -1,12 +1,18 @@
 import akka.actor.ActorSystem
-import akka.stream.scaladsl.{Sink, Source, StreamConverters}
+import akka.stream.scaladsl.{Flow, Sink, Source, StreamConverters}
 import akka.util.ByteString
+import cache.CaffeineCache
+import model._
 import thirdparties.{MegaFlexContact, OrmiFlexContact, RawContact}
+
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 
 object ScrapperApp extends App {
 
   implicit val actorSystem = ActorSystem("ScrapSys")
   val streamingScrapper = new StreamingScrapper
+  val cache = new CaffeineCache
 
   import io.circe.generic.auto._
 
@@ -41,6 +47,11 @@ object ScrapperApp extends App {
           case MegaFlex.id => streamingScrapper.parsingStream[MegaFlexContact](src0)
         }
     }
+    .via(Flow.fromFunction[Contact[_], Unit](contact => {
+      import scalacache.modes.try_._
+
+      cache.caffeineCache.put(contact.id)(contact)
+    }))
     .to(Sink.foreach(println))
     .run()
 

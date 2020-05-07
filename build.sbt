@@ -15,6 +15,7 @@ libraryDependencies ++=
   "io.scalaland" %% "chimney" % "0.5.1" ::
   "com.nrinaudo" %% "kantan.csv" % "0.6.0" ::
   "com.github.ben-manes.caffeine" % "caffeine" % "2.8.2" ::
+  "com.github.cb372" %% "scalacache-caffeine" % "0.28.0" ::
   "org.mdedetrich" %% "akka-stream-circe" % akkaStreamCirce ::
   "org.mdedetrich" %% "akka-http-circe" % akkaStreamCirce ::
   "io.circe" %% "circe-core" % circeVersion ::
