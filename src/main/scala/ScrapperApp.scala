@@ -18,13 +18,13 @@ object ScrapperApp extends App {
    *  - Merge incoming streams into single [[Sink]]
    *  - Store unique contacts
    */
-  LocationReader.CABALocationSource
-    .via(LocationReader.CABAParserFlow)
+  LocationReader.coordinateSource
     .mapConcat[RequestInfo[_]](coordinates => {
       println(s"$coordinates")
       Seq(
         RequestInfo[OrmiFlexContact](OrmiFlex, coordinates),
-        RequestInfo[MegaFlexContact](MegaFlex, coordinates))
+        RequestInfo[MegaFlexContact](MegaFlex, coordinates)
+      )
     })
     .map[(geny.Readable, String)](info => {
       val url = info.source.url(info.coordinates)

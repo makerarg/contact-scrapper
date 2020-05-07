@@ -1,9 +1,12 @@
 import akka.actor.ActorSystem
+import akka.stream.scaladsl.Sink
 
 object LocationReaderSpec extends App {
   import LocationReader._
 
   implicit val actorSystem = ActorSystem("LocationSpec")
 
-  locationGraph.run()
+  coordinateSource
+    .to(Sink.foreach(println(_)))
+    .run()
 }
