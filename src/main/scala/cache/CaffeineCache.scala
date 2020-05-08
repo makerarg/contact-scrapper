@@ -7,6 +7,6 @@ class CaffeineCache {
   import scalacache._
   import scalacache.caffeine._
 
-  val caffeineCache: Cache[Contact[_]] = CaffeineCache[Contact[_]]
+  val contactCache: Cache[Contact[_]] = CaffeineCache[Contact[_]]
 
 }

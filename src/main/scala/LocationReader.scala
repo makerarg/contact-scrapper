@@ -77,7 +77,7 @@ object LocationReader {
   private val CABASource: Source[Coordinates, NotUsed] = CABALocationSource.via(CABAParserFlow)
   private val PBASource: Source[Coordinates, NotUsed] = PBALocationSource.via(PBAParserFlow)
 
-  /** Retrieve a [[Source]] with every read pair of [[Coordinates]] */
+  /** Retrieve a [[Source]] that will stream every read pair of [[Coordinates]] */
   val coordinateSource: Source[Coordinates, NotUsed] = CABASource.merge(PBASource)
 
 }

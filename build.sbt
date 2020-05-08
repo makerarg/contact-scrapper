@@ -21,4 +21,7 @@ libraryDependencies ++=
   "io.circe" %% "circe-core" % circeVersion ::
   "io.circe" %% "circe-generic" % circeVersion ::
   "io.circe" %% "circe-parser" % circeVersion ::
+  "org.tpolecat" %% "doobie-core" % "0.8.8" ::
+  "org.tpolecat" %% "doobie-hikari" % "0.8.8" ::
+  "mysql" % "mysql-connector-java" % "5.1.34" ::
   Nil

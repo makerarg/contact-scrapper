@@ -65,7 +65,7 @@ object Contact {
         val website: Option[Website] = websiteOpt(url)
 
         Contact(
-          java.util.UUID.randomUUID().toString,
+          store,
           Option(store),
           store,
           Some(Location(s"$address / $address2", Option(city), Option(state), None, Option(zip), parseCoordinates(lat, long))),

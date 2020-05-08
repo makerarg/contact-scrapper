@@ -2,7 +2,6 @@ import java.util.UUID
 
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Flow, Sink}
-import cache.CaffeineCache
 import model.Coordinates
 import scalacache.Cache
 import scalacache.caffeine.CaffeineCache
