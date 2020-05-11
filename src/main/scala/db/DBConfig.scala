@@ -28,27 +28,67 @@ class DBConfig {
       Blocker.liftExecutionContext(ec)
     ))
   }
-/*
-  def insert(contact: Contact): doobie.Update0 = {
+}
+
+object ContactQueries {
+
+  def insertContact(contact: Contact): doobie.Update0 = {
     sql"""
-         |INSERT INTO `third_party_contact` (
+         |INSERT INTO `third_party_contact`(
          |    `id`,
          |    `store_name`,
          |    `name`,
          |    `website`,
          |    `source`
-         |)
-         |VALUES (
+         |) VALUES (
          |  ${contact.id},
          |  ${contact.storeName},
          |  ${contact.name},
-         |  ${contact.website},
+         |  ${contact.website.map(_.value)},
          |  ${contact.source}
-         |)
+         |);
         """.stripMargin
       .update
   }
 
- */
+  def insertContactEmail(contact: Contact): doobie.Update0 = {
+    sql"""
+         |INSERT INTO `contact_email_address`(
+         |    `id`
+         |) VALUES (
+         |  ???
+         |);
+        """.stripMargin
+      .update
+  }
 
+  def insertContactPhone(contact: Contact): doobie.Update0 = {
+    sql"""
+         |INSERT INTO `contact_phone_number`(
+         |    `id`
+         |) VALUES (
+         |  ???
+         |);
+        """.stripMargin
+      .update
+  }
+
+  def insertContactLocation(contact: Contact): doobie.Update0 = {
+    sql"""
+         |INSERT INTO `contact_location`(
+         |    `id`,
+         |    `store_name`,
+         |    `name`,
+         |    `website`,
+         |    `source`
+         |) VALUES (
+         |  ${contact.id},
+         |  ${contact.storeName},
+         |  ${contact.name},
+         |  ${contact.website.map(_.value)},
+         |  ${contact.source}
+         |);
+        """.stripMargin
+      .update
+  }
 }
