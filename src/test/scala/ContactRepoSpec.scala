@@ -1,4 +1,5 @@
 import cats.effect.{ContextShift, IO}
+import db.DBConfig
 import eu.timepit.refined.api.RefType
 import model.Contact.{EmailAddress, PhoneNumber, Website}
 import model._
@@ -9,7 +10,7 @@ object ContactRepoSpec extends App {
 
   implicit val ec: ExecutionContext = ExecutionContext.global
   implicit val cs: ContextShift[IO] = IO.contextShift(ec)
-  val repo = new ContactRepo
+  val repo = new ContactRepo(new DBConfig)
 
   val phoneNumber: Option[PhoneNumber] = RefType.applyRef[PhoneNumber]("1153539333").toOption
   val website: Option[Website] = RefType.applyRef[Website]("www.website.com").toOption

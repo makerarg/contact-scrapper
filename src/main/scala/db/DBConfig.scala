@@ -10,10 +10,7 @@ import model.{Contact, Location}
 
 import scala.concurrent.ExecutionContext
 
-class DBConfig {
-
-  implicit val ec: ExecutionContext = ExecutionContext.global
-  implicit val cs: ContextShift[IO] = IO.contextShift(ec)
+class DBConfig(implicit val ec: ExecutionContext, cs: ContextShift[IO]) {
 
   private val config: HikariConfig = new HikariConfig()
   config.setJdbcUrl("jdbc:mysql://127.0.0.1:3306/roofie")

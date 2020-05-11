@@ -5,26 +5,19 @@ import akka.stream.scaladsl.{Flow, Source}
 import kantan.csv._
 import model.{Coordinates, Latitude, Longitude}
 
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 object LocationReader {
   import kantan.csv.ops._
 
   /** Iterators that will read csv lines as their respective case class */
-  private val CABAReaderIterator: Iterator[ReadResult[CABAData]] = {
-    new File(
-      getClass
-        .getResource("./provider/barrios-caba.csv")
-        .getPath
-    ).asCsvReader[CABAData](rfc)
-    .iterator
+  val CABAReaderIterator: Iterator[ReadResult[CABAData]] = {
+    new File("src/main/scala/locationprovider/barrios-caba.csv")
+      .asCsvReader[CABAData](rfc)
+      .iterator
   }
-  private val PBAReaderIterator: Iterator[ReadResult[PBAData]] = {
-    new File(
-      getClass
-        .getResource("./provider/mapa-judicial-pba.csv")
-        .getPath
-    ).asCsvReader[PBAData](
+  val PBAReaderIterator: Iterator[ReadResult[PBAData]] = {
+    new File("src/main/scala/locationprovider/mapa-judicial-pba.csv").asCsvReader[PBAData](
       rfc
         .withHeader(true)
         .withCellSeparator(';')
@@ -33,6 +26,7 @@ object LocationReader {
 
   /** Map [[ReadResult]] lines to [[Coordinates]] */
   private val CABACsvLineToCoordinateParser: ReadResult[CABAData] => Coordinates = { readResult =>
+    println("CABA row")
     (for {
       line <- readResult
       splitLine = line.polygon.split(" ")
@@ -47,6 +41,7 @@ object LocationReader {
     }
   }
   private val PBACsvLineToCoordinateParser: ReadResult[PBAData] => Coordinates = { readResult =>
+    println("PBA row")
     (for {
       line <- readResult
     } yield Coordinates(Latitude(line.lat), Longitude(line.long))) match {
@@ -58,24 +53,24 @@ object LocationReader {
   }
 
   /** Make a [[Source]] out of the [[CsvReader]] iterators */
-  private val CABALocationSource: Source[ReadResult[CABAData], NotUsed] = Source.fromIterator(() => CABAReaderIterator)
-  private val PBALocationSource: Source[ReadResult[PBAData], NotUsed] = Source.fromIterator(() => PBAReaderIterator)
+  val CABALocationSource: Source[ReadResult[CABAData], NotUsed] = Source.fromIterator(() => CABAReaderIterator)
+  val PBALocationSource: Source[ReadResult[PBAData], NotUsed] = Source.fromIterator(() => PBAReaderIterator)
 
   /** Send [[ReadResult]]s through our parsers */
-  private val CABAParserFlow: Flow[ReadResult[CABAData], Coordinates, NotUsed] = {
+  val CABAParserFlow: Flow[ReadResult[CABAData], Coordinates, NotUsed] = {
     Flow.fromFunction[ReadResult[CABAData], Coordinates](
       LocationReader.CABACsvLineToCoordinateParser
     )
   }
-  private val PBAParserFlow: Flow[ReadResult[PBAData], Coordinates, NotUsed] = {
+  val PBAParserFlow: Flow[ReadResult[PBAData], Coordinates, NotUsed] = {
     Flow.fromFunction[ReadResult[PBAData], Coordinates](
       LocationReader.PBACsvLineToCoordinateParser
     )
   }
 
   /** Make each [[Source]] go through its parser */
-  private val CABASource: Source[Coordinates, NotUsed] = CABALocationSource.via(CABAParserFlow)
-  private val PBASource: Source[Coordinates, NotUsed] = PBALocationSource.via(PBAParserFlow)
+  val CABASource: Source[Coordinates, NotUsed] = CABALocationSource.via(CABAParserFlow)
+  val PBASource: Source[Coordinates, NotUsed] = PBALocationSource.via(PBAParserFlow)
 
   /** Retrieve a [[Source]] that will stream every read pair of [[Coordinates]] */
   val coordinateSource: Source[Coordinates, NotUsed] = CABASource.merge(PBASource)

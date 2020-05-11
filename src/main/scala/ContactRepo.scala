@@ -4,11 +4,9 @@ import cats.implicits._
 import doobie.implicits._
 import model.Contact
 
-class ContactRepo {
+class ContactRepo(dBConfig: DBConfig) {
 
   import ContactQueries._
-
-  val dBConfig = new DBConfig
 
   def safeInsertContact(contact: Contact): IO[Unit] = {
     for {
