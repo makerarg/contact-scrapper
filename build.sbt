@@ -24,4 +24,6 @@ libraryDependencies ++=
   "org.tpolecat" %% "doobie-core" % "0.8.8" ::
   "org.tpolecat" %% "doobie-hikari" % "0.8.8" ::
   "mysql" % "mysql-connector-java" % "5.1.34" ::
+  "org.scalatest" %% "scalatest" % "3.0.8" % Test ::
+  "org.scalamock" %% "scalamock" % "4.3.0" % Test ::
   Nil

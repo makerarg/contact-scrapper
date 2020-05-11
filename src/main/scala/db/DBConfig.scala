@@ -4,6 +4,7 @@ import cats.effect._
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import doobie.hikari._
 import doobie.implicits._
+import doobie.util.transactor.Transactor
 import model.Contact.{EmailAddress, PhoneNumber}
 import model.{Contact, Location}
 
@@ -14,12 +15,12 @@ class DBConfig {
   implicit val ec: ExecutionContext = ExecutionContext.global
   implicit val cs: ContextShift[IO] = IO.contextShift(ec)
 
-  val config: HikariConfig = new HikariConfig()
+  private val config: HikariConfig = new HikariConfig()
   config.setJdbcUrl("jdbc:mysql://127.0.0.1:3306/roofie")
   config.setUsername("root")
   config.setPassword("")
 
-  val transactor: IO[HikariTransactor[IO]] = {
+  def transactor: IO[Transactor[IO]] = {
     IO.pure(HikariTransactor.apply[IO](
       new HikariDataSource(config),
       ec,
@@ -100,6 +101,14 @@ object ContactQueries {
          |  ${location.coordinates.latitude.value},
          |  ${location.coordinates.longitude.value}
          |);
+        """.stripMargin
+      .update
+  }
+
+  def wipe: doobie.Update0 = {
+    println(s"Wiping tables")
+    sql"""
+         |DELETE FROM `third_party_contact`;
         """.stripMargin
       .update
   }

@@ -1,12 +1,15 @@
-import db.DBConfig
+import cats.effect.{ContextShift, IO}
 import eu.timepit.refined.api.RefType
-import model.Contact.{EmailAddress, PhoneNumber, Website, websiteOpt}
+import model.Contact.{EmailAddress, PhoneNumber, Website}
 import model._
+
+import scala.concurrent.ExecutionContext
 
 object ContactRepoSpec extends App {
 
-  val dbConfig = new DBConfig
-  val repo = new ContactRepo(dbConfig)
+  implicit val ec: ExecutionContext = ExecutionContext.global
+  implicit val cs: ContextShift[IO] = IO.contextShift(ec)
+  val repo = new ContactRepo
 
   val phoneNumber: Option[PhoneNumber] = RefType.applyRef[PhoneNumber]("1153539333").toOption
   val website: Option[Website] = RefType.applyRef[Website]("www.website.com").toOption
@@ -35,5 +38,19 @@ object ContactRepoSpec extends App {
     source = "Test"
   )
 
+  val minimalContact: Contact = Contact(
+    id = "id2",
+    storeName = None,
+    name = "name",
+    location = None,
+    phoneNumber = Seq.empty,
+    emailAddress = Seq.empty,
+    website = None,
+    source = "Test"
+  )
+
+  repo.safeWipe.unsafeRunSync
   repo.safeInsertContact(fullContact).unsafeRunSync
+  repo.safeInsertContact(minimalContact).unsafeRunSync
+  repo.safeWipe.unsafeRunSync
 }

@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS `contact_email_address` (
 
     PRIMARY KEY (`id`),
     UNIQUE(`email_address`),
-    FOREIGN KEY (`contact_id`) REFERENCES `third_party_contact`(`id`)
+    FOREIGN KEY (`contact_id`) REFERENCES `third_party_contact`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `contact_phone_number` (
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS `contact_phone_number` (
 
     PRIMARY KEY (`id`),
     UNIQUE(`phone_number`),
-FOREIGN KEY (`contact_id`) REFERENCES `third_party_contact`(`id`)
+    FOREIGN KEY (`contact_id`) REFERENCES `third_party_contact`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `contact_location` (
@@ -40,5 +40,5 @@ CREATE TABLE IF NOT EXISTS `contact_location` (
     `longitude` decimal,
 
     PRIMARY KEY (`id`),
-    FOREIGN KEY (`contact_id`) REFERENCES `third_party_contact`(`id`)
+    FOREIGN KEY (`contact_id`) REFERENCES `third_party_contact`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;

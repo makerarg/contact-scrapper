@@ -1,15 +1,16 @@
-import db.DBConfig
-import model.Contact
-import doobie.implicits._
-import db.ContactQueries._
+import db.{ContactQueries, DBConfig}
 import cats.effect._
+import cats.implicits._
+import doobie.implicits._
+import model.Contact
 
+class ContactRepo {
 
-class ContactRepo(dBConfig: DBConfig) {
+  import ContactQueries._
 
-  import cats.implicits._
+  val dBConfig = new DBConfig
 
-  def safeInsertContact(contact: Contact) = {
+  def safeInsertContact(contact: Contact): IO[Unit] = {
     for {
       t <- dBConfig.transactor
       _ <- insertContact(contact).run.transact(t)
@@ -18,6 +19,13 @@ class ContactRepo(dBConfig: DBConfig) {
       phoneQueries: List[IO[Int]] = contact.phoneNumber.map(insertContactPhone(contact.id, _).run.transact(t)).toList
       _ <- phoneQueries.sequence
       _ <- contact.location.map(insertContactLocation(contact.id, _).run.transact(t)).getOrElse(IO.unit)
+    } yield ()
+  }
+
+  def safeWipe: IO[Unit] = {
+    for {
+      t <- dBConfig.transactor
+      _ <- wipe.run.transact(t)
     } yield ()
   }
 }
