@@ -14,7 +14,7 @@ import scala.language.postfixOps
 class StreamingScrapper(implicit actorSystem: ActorSystem) {
 
   /** Make a Source that will parse [[ByteString]]s and materialize as an [[OutputStream]]  */
-  def parsingStream[R <: RawContact](source: Source[ByteString, _])(implicit decoder: Decoder[R]): Source[Contact[R], _] = {
+  def parsingStream[R <: RawContact](source: Source[ByteString, _])(implicit decoder: Decoder[R]): Source[Contact, _] = {
     source
       .via(Flow.fromFunction[ByteString, ByteString]( bs => {
         println(s"Getting chunks ${bs}")

@@ -49,7 +49,7 @@ object ScrapperApp extends App {
           case MegaFlex.id => streamingScrapper.parsingStream[MegaFlexContact](src0)
         }
     }
-    .via(Flow.fromFunction[Contact[_], Option[String]](contact => {
+    .via(Flow.fromFunction[Contact, Option[String]](contact => {
       cache.contactCache.put(contact.id)(contact) match {
         case Success(_) => Some(contact.id)
         case Failure(ex) =>
@@ -64,8 +64,6 @@ object ScrapperApp extends App {
     }
     .to(Sink.ignore)
     .run()
-
-  cache.contactCache
 
 }
 

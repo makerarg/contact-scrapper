@@ -6,7 +6,7 @@ import thirdparties.{MegaFlexContact, OrmiFlexContact, RawContact}
 
 import scala.util.{Success, Try}
 
-case class Contact[R <: RawContact](
+case class Contact(
   id: String,
   storeName: Option[String],
   name: String,
@@ -57,7 +57,7 @@ object Contact {
     }
   }
 
-  def apply[R <: RawContact](rawContact: R): Contact[R] = {
+  def apply[R <: RawContact](rawContact: R): Contact = {
     rawContact match {
       case OrmiFlexContact(address, store, _, address2, city, state, zip, _, lat, long, _, _, email, _, url) =>
         val emailFromName: Seq[EmailAddress] = parseStoreNameToEmail(store)

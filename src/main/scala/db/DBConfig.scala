@@ -9,6 +9,7 @@ import cats.implicits._
 import doobie.hikari._
 import doobie.implicits._
 import doobie._
+import model.Contact
 
 import scala.concurrent.ExecutionContext
 
@@ -27,5 +28,27 @@ class DBConfig {
       Blocker.liftExecutionContext(ec)
     ))
   }
+/*
+  def insert(contact: Contact): doobie.Update0 = {
+    sql"""
+         |INSERT INTO `third_party_contact` (
+         |    `id`,
+         |    `store_name`,
+         |    `name`,
+         |    `website`,
+         |    `source`
+         |)
+         |VALUES (
+         |  ${contact.id},
+         |  ${contact.storeName},
+         |  ${contact.name},
+         |  ${contact.website},
+         |  ${contact.source}
+         |)
+        """.stripMargin
+      .update
+  }
+
+ */
 
 }
