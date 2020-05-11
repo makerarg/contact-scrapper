@@ -1,15 +1,11 @@
 package db
 
-
-import java.util.concurrent.Executors
-
-import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import cats.effect._
-import cats.implicits._
+import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import doobie.hikari._
 import doobie.implicits._
-import doobie._
-import model.Contact
+import model.Contact.{EmailAddress, PhoneNumber}
+import model.{Contact, Location}
 
 import scala.concurrent.ExecutionContext
 
@@ -19,7 +15,9 @@ class DBConfig {
   implicit val cs: ContextShift[IO] = IO.contextShift(ec)
 
   val config: HikariConfig = new HikariConfig()
-  config.setJdbcUrl("jdbc:mysql://localhost:3306/roofie")
+  config.setJdbcUrl("jdbc:mysql://127.0.0.1:3306/roofie")
+  config.setUsername("root")
+  config.setPassword("")
 
   val transactor: IO[HikariTransactor[IO]] = {
     IO.pure(HikariTransactor.apply[IO](
@@ -33,6 +31,7 @@ class DBConfig {
 object ContactQueries {
 
   def insertContact(contact: Contact): doobie.Update0 = {
+    println(s"Inserting $contact")
     sql"""
          |INSERT INTO `third_party_contact`(
          |    `id`,
@@ -51,42 +50,55 @@ object ContactQueries {
       .update
   }
 
-  def insertContactEmail(contact: Contact): doobie.Update0 = {
+  def insertContactEmail(contactId: String, emailAddress: EmailAddress): doobie.Update0 = {
+    println(s"Inserting $emailAddress for $contactId")
     sql"""
          |INSERT INTO `contact_email_address`(
-         |    `id`
+         |    `contact_id`,
+         |    `email_address`
          |) VALUES (
-         |  ???
+         |  ${contactId},
+         |  ${emailAddress.value}
          |);
         """.stripMargin
       .update
   }
 
-  def insertContactPhone(contact: Contact): doobie.Update0 = {
+  def insertContactPhone(contactId: String, phoneNumber: PhoneNumber): doobie.Update0 = {
+    println(s"Inserting $phoneNumber for $contactId")
     sql"""
          |INSERT INTO `contact_phone_number`(
-         |    `id`
+         |    `contact_id`,
+         |    `phone_number`
          |) VALUES (
-         |  ???
+         |  ${contactId},
+         |  ${phoneNumber.value}
          |);
         """.stripMargin
       .update
   }
 
-  def insertContactLocation(contact: Contact): doobie.Update0 = {
+  def insertContactLocation(contactId: String, location: Location): doobie.Update0 = {
+    println(s"Inserting $location for $contactId")
     sql"""
          |INSERT INTO `contact_location`(
-         |    `id`,
-         |    `store_name`,
-         |    `name`,
-         |    `website`,
-         |    `source`
+         |    `contact_id`,
+         |    `address`,
+         |    `city`,
+         |    `state`,
+         |    `country`,
+         |    `zip_code`,
+         |    `latitude`,
+         |    `longitude`
          |) VALUES (
-         |  ${contact.id},
-         |  ${contact.storeName},
-         |  ${contact.name},
-         |  ${contact.website.map(_.value)},
-         |  ${contact.source}
+         |  ${contactId},
+         |  ${location.address},
+         |  ${location.city},
+         |  ${location.state},
+         |  ${location.country},
+         |  ${location.zipCode},
+         |  ${location.coordinates.latitude.value},
+         |  ${location.coordinates.longitude.value}
          |);
         """.stripMargin
       .update
