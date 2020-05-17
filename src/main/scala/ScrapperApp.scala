@@ -1,14 +1,11 @@
 import akka.actor.ActorSystem
-import akka.stream.scaladsl.{Flow, Sink, Source, StreamConverters}
-import akka.util.ByteString
 import cache.CaffeineCache
 import cats.effect.{ContextShift, IO}
 import db.DBConfig
 import model._
-import thirdparties.{MegaFlexContact, OrmiFlexContact, RawContact}
+import thirdparties.RawContact
 
 import scala.concurrent.ExecutionContext
-import scala.util.{Failure, Success}
 
 object ScrapperApp extends App {
   implicit val actorSystem = ActorSystem("ScrapSys")
@@ -20,7 +17,7 @@ object ScrapperApp extends App {
 
   val streamingScrapper = new StreamingScrapper(cache, repo)
 
-  streamingScrapper.stream.run()
+  streamingScrapper.graph.run()
 
 }
 

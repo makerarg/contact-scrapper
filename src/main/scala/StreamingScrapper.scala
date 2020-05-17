@@ -1,14 +1,17 @@
 import java.io.OutputStream
 
+import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.stream.scaladsl.{Flow, Sink, Source, StreamConverters}
+import akka.stream.scaladsl.{Flow, RunnableGraph, Sink, Source, StreamConverters}
 import akka.util.ByteString
 import cache.CaffeineCache
 import io.circe.Decoder
+import io.circe.generic.auto._
 import model._
 import org.mdedetrich.akka.stream.support.CirceStreamSupport
 import org.typelevel.jawn.AsyncParser
 import thirdparties.{MegaFlexContact, OrmiFlexContact, RawContact}
+import scalacache.modes.try_._
 
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
@@ -16,7 +19,7 @@ import scala.util.{Failure, Success}
 class StreamingScrapper(cache: CaffeineCache, repo: ContactRepo)(implicit actorSystem: ActorSystem) {
 
   /** Make a Source that will parse [[ByteString]]s and materialize as an [[OutputStream]]  */
-  def parsingStream[R <: RawContact](source: Source[ByteString, _])(implicit decoder: Decoder[R]): Source[Contact, _] = {
+  def parsingFlow[R <: RawContact](source: Source[ByteString, _])(implicit decoder: Decoder[R]): Source[Contact, _] = {
     source
       .via(Flow.fromFunction[ByteString, ByteString]( bs => {
         println(s"Getting chunks ${bs}")
@@ -32,8 +35,36 @@ class StreamingScrapper(cache: CaffeineCache, repo: ContactRepo)(implicit actorS
       .get
       .stream(url, onHeadersReceived = { sh => println(s"SH arrived: $sh")})
 
-  import io.circe.generic.auto._
-  import scalacache.modes.try_._
+  val source: Source[Coordinates, NotUsed] = LocationReader.coordinateSource
+  val coordinatesToRequestInfoFlow: Flow[Coordinates, List[RequestInfo[_]], NotUsed] =
+    Flow.fromFunction[Coordinates, List[RequestInfo[_]]]{ coordinates =>
+      println(s"$coordinates")
+      List(
+        RequestInfo[OrmiFlexContact](OrmiFlex, coordinates),
+        RequestInfo[MegaFlexContact](MegaFlex, coordinates)
+      )
+    }
+  val infoToContactSource: RequestInfo[_] => Source[Contact, _] = { info: RequestInfo[_] =>
+    val url = info.source.url(info.coordinates)
+    println(s"making request to $url")
+
+    lazy val source = requestStreamed(url).readBytesThrough(inputStream => {
+      StreamConverters.fromInputStream(() => inputStream)
+    })
+    info.source.id match {
+      case OrmiFlex.id => parsingFlow[OrmiFlexContact](source)
+      case MegaFlex.id => parsingFlow[MegaFlexContact](source)
+    }
+  }
+  val cacheContactFlow: Flow[Contact, Option[String], NotUsed] =
+    Flow.fromFunction[Contact, Option[String]](contact => {
+      cache.contactCache.put(contact.id)(contact) match {
+        case Success(_) => Some(contact.id)
+        case Failure(ex) =>
+          println(s"contactCache.put failed with ex ${ex.getMessage}")
+          None
+      }
+    })
 
   /**
    * Flow:
@@ -43,35 +74,11 @@ class StreamingScrapper(cache: CaffeineCache, repo: ContactRepo)(implicit actorS
    *  - Merge incoming streams into single [[Sink]]
    *  - Store unique contacts
    */
-  val stream = LocationReader.coordinateSource
-    .via(Flow.fromFunction[Coordinates, List[RequestInfo[_]]]{ coordinates =>
-      println(s"$coordinates")
-      List(
-        RequestInfo[OrmiFlexContact](OrmiFlex, coordinates),
-        RequestInfo[MegaFlexContact](MegaFlex, coordinates)
-      )
-    })
+  val graph: RunnableGraph[NotUsed] = source
+    .via(coordinatesToRequestInfoFlow)
     .mapConcat(identity)
-    .flatMapConcat({ info: RequestInfo[_] =>
-      val url = info.source.url(info.coordinates)
-      println(s"making request to $url")
-
-      lazy val source = requestStreamed(url).readBytesThrough(inputStream => {
-        StreamConverters.fromInputStream(() => inputStream)
-      })
-      info.source.id match {
-        case OrmiFlex.id => parsingStream[OrmiFlexContact](source)
-        case MegaFlex.id => parsingStream[MegaFlexContact](source)
-      }
-    })
-    .via(Flow.fromFunction[Contact, Option[String]](contact => {
-      cache.contactCache.put(contact.id)(contact) match {
-        case Success(_) => Some(contact.id)
-        case Failure(ex) =>
-          println(s"contactCache.put failed with ex ${ex.getMessage}")
-          None
-      }
-    }))
+    .flatMapConcat(infoToContactSource)
+    .via(cacheContactFlow)
     .to(Sink.foreach {
       case Some(id) =>
         cache.contactCache.get(id) match {
