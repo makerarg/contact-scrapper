@@ -60,7 +60,7 @@ object ContactQueries {
   }
 
   def insertIO(contact: Contact): ConnectionIO[Unit] = {
-    println(s"Inserting $contact")
+    println(s"insertIO ${contact.id}")
     val sql =
       """
         |INSERT INTO `third_party_contact`(
@@ -91,7 +91,7 @@ object ContactQueries {
   }
 
   def insertEmailsIO(contact: Contact): ConnectionIO[Int] = {
-    println(s"Inserting emailAddress for ${contact.id}")
+    println(s"insertEmailsIO ${contact.id}")
     val sql =
       """
          |INSERT INTO `contact_email_address`(
@@ -104,7 +104,7 @@ object ContactQueries {
   }
 
   def insertPhonesIO(contact: Contact): ConnectionIO[Int] = {
-    println(s"Inserting phoneNumbers for ${contact.id}")
+    println(s"insertPhonesIO ${contact.id}")
     val sql =
       """
         |INSERT INTO `contact_phone_number`(
@@ -117,7 +117,7 @@ object ContactQueries {
   }
 
   def insertLocationIO(contact: Contact): ConnectionIO[Unit] = {
-    println(s"Inserting $contact")
+    println(s"insertLocationIO ${contact.id}")
 
     contact.toLocationRow match {
       case Some(locationRow) =>

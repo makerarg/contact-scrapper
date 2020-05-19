@@ -91,7 +91,7 @@ class StreamingScrapper(cache: CaffeineCache, repo: ContactRepo)(implicit actorS
       }
     })
   }
-  val writeToDB: Option[String] => Unit = {
+  val writeToDBFromCache: Option[String] => Unit = {
     case Some(id) =>
       cache.contactCache.get(id) match {
         case Success(contact) =>
@@ -109,7 +109,7 @@ class StreamingScrapper(cache: CaffeineCache, repo: ContactRepo)(implicit actorS
       }
     case _ => ()
   }
-  val insert: Contact => Unit = { contact =>
+  val writeToDB: Contact => Unit = { contact =>
     repo.safeInsertContact(contact).unsafeRunAsync {
       case Right(_) =>
         println(s"Successful DB Insert ${contact.id}")
@@ -136,7 +136,7 @@ class StreamingScrapper(cache: CaffeineCache, repo: ContactRepo)(implicit actorS
     .mapConcat(identity)
     .flatMapConcat(infoToContactSource)
     .via(cacheContactFlow)
-    .to(Sink.foreach(writeToDB))
+    .to(Sink.foreach(writeToDBFromCache))
 
      */
 
@@ -162,7 +162,7 @@ class StreamingScrapper(cache: CaffeineCache, repo: ContactRepo)(implicit actorS
 //    })
 //    .via(cacheContactFlow)
 //    .mergeSubstreams.async
-//    .to(Sink.foreach(writeToDB))
+//    .to(Sink.foreach(writeToDBFromCache))
     .to(Sink.ignore)
 
   val graph3: RunnableGraph[NotUsed] = source
@@ -179,9 +179,9 @@ class StreamingScrapper(cache: CaffeineCache, repo: ContactRepo)(implicit actorS
       contacts
     })
 //    .via(cacheContactFlow)
-//    .to(Sink.foreach(writeToDB))
+//    .to(Sink.foreach(writeToDBFromCache))
     //TODO: The database is timing out (too many connections)!!!!!!!
-    .to(Sink.foreach(insert))
+    .to(Sink.foreach(writeToDB))
 //    .mergeSubstreams
 
 }
