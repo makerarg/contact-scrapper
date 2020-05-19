@@ -1,10 +1,11 @@
+import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Flow, Sink, Source, StreamConverters}
 import akka.util.ByteString
 import cache.CaffeineCache
 import cats.effect.{ContextShift, IO}
 import db.DBConfig
-import model.{Contact, ContactSource, MegaFlex, OrmiFlex}
+import model.{Contact, ContactSource, Coordinates, MegaFlex, OrmiFlex}
 import org.scalatest.{FreeSpec, Matchers}
 import scalacache.modes.try_._
 import thirdparties.{MegaFlexContact, OrmiFlexContact}
@@ -45,7 +46,7 @@ object DummyScrapperApp extends App {
   LocationReader.coordinateSource
     .via(streamingScrapper.coordinatesToRequestInfoFlow)
     .mapConcat(identity)
-    .via(Flow.fromFunction[RequestInfo[_], (geny.Readable, String)] { info =>
+    .via(Flow.fromFunction[RequestInfo, (geny.Readable, String)] { info =>
       n += 1
       println(n)
       println(s"making request to $info.url")
@@ -99,8 +100,12 @@ class ScrapperAppSpec extends FreeSpec with Matchers {
 
   val cache = new CaffeineCache
   val repo = new ContactRepo(new DBConfig)
+
+
   val streamingScrapper = new StreamingScrapper(cache, repo) {
-    override val infoToContactSource: RequestInfo[_] => Source[Contact, _] = { info: RequestInfo[_] =>
+    val singleItemSource: Source[Coordinates, NotUsed] = LocationReader.coordinateSource.take(1)
+
+    val infoToContactSource: RequestInfo => Source[Contact, _] = { info: RequestInfo =>
       println(info)
       val url = info.source.url(info.coordinates)
       println(s"making request to $url")
@@ -156,6 +161,37 @@ class ScrapperAppSpec extends FreeSpec with Matchers {
 
       Thread.sleep(2000)
       n shouldBe 3742
+    }
+
+    "should split in substreams and still go through every source" in {
+      var n = 0
+
+      LocationReader.coordinateSource
+        .via(streamingScrapper.coordinatesToRequestInfoFlow)
+        .mapConcat(identity)
+        .groupBy(
+          maxSubstreams = 2,
+          _.source,
+          allowClosedSubstreamRecreation = true)
+        .flatMapConcat(streamingScrapper.infoToContactSource)
+        .via(Flow.fromFunction(_ => n += 1))
+        .mergeSubstreams
+        .to(Sink.foreach(println))
+        .run
+
+      Thread.sleep(2500)
+      n shouldBe 3742
+    }
+
+
+    "should parse results" in {
+      streamingScrapper.singleItemSource
+        .via(streamingScrapper.coordinatesToRequestInfoFlow)
+        .mapConcat(identity)
+        .groupBy(
+          maxSubstreams = 2,
+          _.source,
+          allowClosedSubstreamRecreation = true)
     }
   }
 }

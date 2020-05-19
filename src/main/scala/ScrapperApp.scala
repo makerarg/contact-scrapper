@@ -3,7 +3,6 @@ import cache.CaffeineCache
 import cats.effect.{ContextShift, IO}
 import db.DBConfig
 import model._
-import thirdparties.RawContact
 
 import scala.concurrent.ExecutionContext
 
@@ -17,8 +16,8 @@ object ScrapperApp extends App {
 
   val streamingScrapper = new StreamingScrapper(cache, repo)
 
-  streamingScrapper.graph.run()
+  streamingScrapper.graph3.run()
 
 }
 
-case class RequestInfo[R <: RawContact](source: ContactSource[R], coordinates: Coordinates)
+case class RequestInfo(source: ContactSource, coordinates: Coordinates)

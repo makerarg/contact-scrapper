@@ -17,12 +17,12 @@ class DBConfig(implicit val ec: ExecutionContext, cs: ContextShift[IO]) {
   config.setUsername("root")
   config.setPassword("")
 
-  def transactor: IO[Transactor[IO]] = {
-    IO.pure(HikariTransactor.apply[IO](
+  def transactor: Transactor[IO] = {
+    HikariTransactor.apply[IO](
       new HikariDataSource(config),
       ec,
       Blocker.liftExecutionContext(ec)
-    ))
+    )
   }
 }
 
