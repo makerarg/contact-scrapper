@@ -121,6 +121,7 @@ class StreamingScrapper(cache: CaffeineCache, repo: ContactRepo)(implicit actorS
     }
   }
 
+
   /**
    * Flow:
    *  - Read [[Location]]s
