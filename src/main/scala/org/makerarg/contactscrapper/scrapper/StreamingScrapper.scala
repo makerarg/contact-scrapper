@@ -17,7 +17,6 @@ import org.typelevel.jawn.AsyncParser
 import scalacache.modes.try_._
 
 import scala.language.postfixOps
-import scala.reflect.ClassTag
 import scala.util.{Failure, Success}
 
 class StreamingScrapper(
@@ -51,18 +50,19 @@ class StreamingScrapper(
       StreamConverters.fromInputStream(() => inputStream)
     })
   }
-  val ormiInfoToContactSource: RequestInfo => Source[Contact, _] = { info =>
-    parsingFlow[OrmiFlexContact](requestToStream(info))
-  }
-  val megaInfoToContactSource: RequestInfo => Source[Contact, _] = { info =>
-    parsingFlow[MegaFlexContact](requestToStream(info))
+
+  val infoToContactSource: RequestInfo => Source[Contact, _] = { info =>
+    info.source match {
+      case OrmiFlex => parsingFlow[OrmiFlexContact](requestToStream(info))
+      case MegaFlex => parsingFlow[MegaFlexContact](requestToStream(info))
+    }
   }
 
   val cacheContactFlow: Flow[Contact, Option[String], NotUsed] = {
     Flow.fromFunction[Contact, Option[String]](contact => {
       cache.contactCache.put(contact.id)(contact) match {
         case Success(_) =>
-          println(s"Successful org.makerarg.contactscrapper.cache write with id: ${contact.id}")
+          println(s"Successful cache write with id: ${contact.id}")
           Some(contact.id)
         case Failure(ex) =>
           println(s"contactCache.put failed with ex ${ex.getMessage}")
@@ -105,13 +105,10 @@ class StreamingScrapper(
       _.source.id,
       allowClosedSubstreamRecreation = true)
     .async
-//    .flatMapConcat({
-//      case info: org.makerarg.contactscrapper.RequestInfo =>
-//        infoToContacts(info)
-//    })
-//    .via(cacheContactFlow)
+    .flatMapConcat(infoToContactSource)
+    .via(cacheContactFlow)
 //    .mergeSubstreams.async
 //    .to(Sink.foreach(writeToDBFromCache))
-    .to(Sink.ignore)
+    .to(Sink.foreach(println(_)))
 
 }

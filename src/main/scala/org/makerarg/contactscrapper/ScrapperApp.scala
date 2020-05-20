@@ -4,7 +4,6 @@ import akka.actor.ActorSystem
 import cats.effect.{ContextShift, IO}
 import org.makerarg.contactscrapper.cache.CaffeineCache
 import org.makerarg.contactscrapper.db.{ContactRepo, DBConfig}
-import org.makerarg.contactscrapper.model._
 import org.makerarg.contactscrapper.scrapper.{StreamingScrapper, SyncScrapper}
 
 import scala.concurrent.ExecutionContext
@@ -20,6 +19,6 @@ object ScrapperApp extends App {
   val syncScrapper = new SyncScrapper(cache, repo)
   val streamingScrapper = new StreamingScrapper(cache, repo)
 
-  syncScrapper.graph.run()
+  streamingScrapper.graph.run()
 
 }
