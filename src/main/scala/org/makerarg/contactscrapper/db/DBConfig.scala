@@ -1,4 +1,4 @@
-package db
+package org.makerarg.contactscrapper.db
 
 import cats.effect._
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}

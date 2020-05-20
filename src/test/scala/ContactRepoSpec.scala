@@ -1,9 +1,9 @@
 import cats.effect.{ContextShift, IO}
 import com.softwaremill.quicklens._
-import db.DBConfig
+import org.makerarg.contactscrapper.db.{ContactRepo, DBConfig}
 import eu.timepit.refined.api.RefType
-import model.Contact.{EmailAddress, PhoneNumber, Website}
-import model._
+import org.makerarg.contactscrapper.model.Contact.{EmailAddress, PhoneNumber, Website}
+import org.makerarg.contactscrapper.model._
 
 import scala.concurrent.ExecutionContext
 

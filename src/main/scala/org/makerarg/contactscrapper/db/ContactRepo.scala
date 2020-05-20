@@ -1,11 +1,11 @@
+package org.makerarg.contactscrapper.db
+
 import cats.effect._
 import cats.implicits._
-import db.DBConfig
 import doobie.Update
 import doobie.free.connection.ConnectionIO
 import doobie.implicits._
-import doobie.util.query.Query
-import model.Contact
+import org.makerarg.contactscrapper.model.Contact
 
 class ContactRepo(dBConfig: DBConfig) {
 

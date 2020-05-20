@@ -1,4 +1,4 @@
-package thirdparties
+package org.makerarg.contactscrapper.thirdparties
 
 trait RawContact {
 }

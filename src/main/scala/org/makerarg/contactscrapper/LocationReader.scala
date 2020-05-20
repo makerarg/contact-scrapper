@@ -1,23 +1,25 @@
+package org.makerarg.contactscrapper
+
 import java.io.File
 
 import akka.NotUsed
 import akka.stream.scaladsl.{Flow, Source}
 import kantan.csv._
-import model.{Coordinates, Latitude, Longitude}
+import org.makerarg.contactscrapper.model.{Coordinates, Latitude, Longitude}
 
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 object LocationReader {
   import kantan.csv.ops._
 
   /** Iterators that will read csv lines as their respective case class */
   val CABAReaderIterator: Iterator[ReadResult[CABAData]] = {
-    new File("src/main/scala/locationprovider/barrios-caba.csv")
+    new File("src/main/scala/org/makerarg/contactscrapper/locationprovider/barrios-caba.csv")
       .asCsvReader[CABAData](rfc)
       .iterator
   }
   val PBAReaderIterator: Iterator[ReadResult[PBAData]] = {
-    new File("src/main/scala/locationprovider/mapa-judicial-pba.csv").asCsvReader[PBAData](
+    new File("src/main/scala/org/makerarg/contactscrapper/locationprovider/mapa-judicial-pba.csv").asCsvReader[PBAData](
       rfc
         .withHeader(true)
         .withCellSeparator(';')

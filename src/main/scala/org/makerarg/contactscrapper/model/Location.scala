@@ -1,6 +1,6 @@
-package model
+package org.makerarg.contactscrapper.model
 
-import thirdparties.{MegaFlexContact, OrmiFlexContact}
+import org.makerarg.contactscrapper.thirdparties.{MegaFlexContact, OrmiFlexContact}
 
 case class Location(
   address: String,
@@ -18,7 +18,7 @@ object Location {
 case class Coordinates(latitude: Latitude, longitude: Longitude)
 
 case class Latitude(value: BigDecimal) {
-  require(value >= -90.0d && value <= 90.0d, "model.Latitude must be in range (-90.0, 90.0)")
+  require(value >= -90.0d && value <= 90.0d, "org.makerarg.contactscrapper.model.Latitude must be in range (-90.0, 90.0)")
 }
 object Latitude {
   def apply(value: BigDecimal): Latitude = {
@@ -26,7 +26,7 @@ object Latitude {
   }
 }
 case class Longitude(value: BigDecimal) {
-  require(value >= -180.0d && value <= 180.0d, "model.Longitude must be in range (-180.0, 180.0)")
+  require(value >= -180.0d && value <= 180.0d, "org.makerarg.contactscrapper.model.Longitude must be in range (-180.0, 180.0)")
 }
 object Longitude {
   def apply(value: BigDecimal): Longitude = {

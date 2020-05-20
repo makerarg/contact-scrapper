@@ -1,6 +1,6 @@
-package model
+package org.makerarg.contactscrapper.model
 
-import thirdparties.{MegaFlexContact, OrmiFlexContact, RawContact}
+import org.makerarg.contactscrapper.thirdparties.{MegaFlexContact, OrmiFlexContact, RawContact}
 
 sealed trait ContactSource {
   val id: String = this.getClass.getName

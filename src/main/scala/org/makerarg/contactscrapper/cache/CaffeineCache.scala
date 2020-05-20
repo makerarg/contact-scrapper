@@ -1,6 +1,6 @@
-package cache
+package org.makerarg.contactscrapper.cache
 
-import model.Contact
+import org.makerarg.contactscrapper.model.Contact
 
 class CaffeineCache {
 

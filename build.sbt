@@ -1,10 +1,10 @@
-name := "contact-scrapper"
+name := "contact-org.makerarg.contactscrapper.scrapper"
 
 version := "0.1"
 
 scalaVersion := "2.13.2"
 
-mainClass in (Compile, run) := Some("ScrapperApp")
+mainClass in (Compile, run) := Some("org.makerarg.contactscrapper.ScrapperApp")
 
 val akkaStreamCirce = "0.6.0"
 val circeVersion = "0.13.0"

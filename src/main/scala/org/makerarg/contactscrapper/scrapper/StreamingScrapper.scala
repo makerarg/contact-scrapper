@@ -1,26 +1,29 @@
+package org.makerarg.contactscrapper.scrapper
+
 import java.io.OutputStream
 
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Flow, RunnableGraph, Sink, Source, StreamConverters}
 import akka.util.ByteString
-import cache.CaffeineCache
-import geny.Bytes
 import io.circe.Decoder
 import io.circe.generic.auto._
-import model._
+import org.makerarg.contactscrapper.cache.CaffeineCache
+import org.makerarg.contactscrapper.db.ContactRepo
+import org.makerarg.contactscrapper.model._
+import org.makerarg.contactscrapper.thirdparties.{MegaFlexContact, OrmiFlexContact, RawContact}
 import org.mdedetrich.akka.stream.support.CirceStreamSupport
 import org.typelevel.jawn.AsyncParser
-import thirdparties.{MegaFlexContact, OrmiFlexContact, RawContact}
 import scalacache.modes.try_._
-import io.circe.generic.auto._
 
-import scala.concurrent.Future
 import scala.language.postfixOps
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success}
 
-class StreamingScrapper(cache: CaffeineCache, repo: ContactRepo)(implicit actorSystem: ActorSystem) {
+class StreamingScrapper(
+  val cache: CaffeineCache,
+  val repo: ContactRepo
+)(implicit val actorSystem: ActorSystem) extends Scrapper {
 
   /** Make a Source that will parse [[ByteString]]s and materialize as an [[OutputStream]]  */
   def parsingFlow[R <: RawContact](source: Source[ByteString, _])(implicit decoder: Decoder[R]): Source[Contact, _] = {
@@ -34,33 +37,12 @@ class StreamingScrapper(cache: CaffeineCache, repo: ContactRepo)(implicit actorS
   }
 
   /** Make a streamed GET request to the given url and return the source as a Readable object  */
-  def requestStreamed(url: String): geny.Readable =
+  def requestStreamed(url: String): geny.Readable = {
     requests
       .get
       .stream(url, onHeadersReceived = { sh => println(s"SH arrived: $sh")})
-
-  /** Make a GET request to the given url and return the source as a Readable object  */
-  def request[R <: RawContact: ClassTag](url: String)(implicit decoder: Decoder[R]): Seq[Contact] = {
-    import io.circe.parser.decode
-
-    println(s"Making request to ${url}")
-    val res = requests.get(url).text
-    decode[Seq[R]](res) match {
-      case Left(err) => println(err); Seq.empty
-      case Right(contacts) => contacts.map(Contact(_))
-    }
   }
 
-  val source: Source[Coordinates, NotUsed] = LocationReader.coordinateSource
-  def coordinatesToRequestInfoFlow[R <: RawContact]: Flow[Coordinates, List[RequestInfo], NotUsed] = {
-    Flow.fromFunction[Coordinates, List[RequestInfo]]{ coordinates =>
-      println(s"$coordinates")
-      List(
-        RequestInfo(OrmiFlex, coordinates),
-        RequestInfo(MegaFlex, coordinates)
-      )
-    }
-  }
   val requestToStream: RequestInfo => Source[ByteString, _] = { info =>
     val url = info.source.url(info.coordinates)
     println(s"making streamed request to $url")
@@ -75,15 +57,12 @@ class StreamingScrapper(cache: CaffeineCache, repo: ContactRepo)(implicit actorS
   val megaInfoToContactSource: RequestInfo => Source[Contact, _] = { info =>
     parsingFlow[MegaFlexContact](requestToStream(info))
   }
-  def infoToContacts[R <: RawContact: ClassTag](info: RequestInfo)(implicit decoder: Decoder[R]): Seq[Contact] = {
-    request[R](info.source.url(info.coordinates))
-  }
 
   val cacheContactFlow: Flow[Contact, Option[String], NotUsed] = {
     Flow.fromFunction[Contact, Option[String]](contact => {
       cache.contactCache.put(contact.id)(contact) match {
         case Success(_) =>
-          println(s"Successful cache write with id: ${contact.id}")
+          println(s"Successful org.makerarg.contactscrapper.cache write with id: ${contact.id}")
           Some(contact.id)
         case Failure(ex) =>
           println(s"contactCache.put failed with ex ${ex.getMessage}")
@@ -109,39 +88,16 @@ class StreamingScrapper(cache: CaffeineCache, repo: ContactRepo)(implicit actorS
       }
     case _ => ()
   }
-  val writeToDB: Contact => Unit = { contact =>
-    /** The async version of this never writes */
-    repo.safeInsertContact(contact).unsafeRunSync()
-  }
-
 
   /**
    * Flow:
-   *  - Read [[Location]]s
-   *  - Make a request to each [[ContactSource]] for each [[Location]]
-   *    - Parse [[ByteString]]s as [[Contact]]s
-   *  - Merge incoming streams into single [[Sink]]
-   *  - Store unique contacts
-   */
-    /*
-  val graph: RunnableGraph[NotUsed] = source
-    .via(coordinatesToRequestInfoFlow)
-    .mapConcat(identity)
-    .flatMapConcat(infoToContactSource)
-    .via(cacheContactFlow)
-    .to(Sink.foreach(writeToDBFromCache))
-
-     */
-
-  /**
-   * New Flow:
    *  - Read [[Coordinate]]s
-   *  - Build 2 sources for each coordinate (Ormi and Mega)
+   *  - Group into subsources for each coordinate (Ormi and Mega)
    *  - Make requests in parallel on each Stream
    *  - Parse as [[Contact]]
    *  - Merge into single Sink that writes to the DB
    */
-  val graph2: RunnableGraph[NotUsed] = source
+  val graph: RunnableGraph[NotUsed] = source
     .via(coordinatesToRequestInfoFlow)
     .mapConcat(identity)
     .groupBy(
@@ -150,27 +106,12 @@ class StreamingScrapper(cache: CaffeineCache, repo: ContactRepo)(implicit actorS
       allowClosedSubstreamRecreation = true)
     .async
 //    .flatMapConcat({
-//      case info: RequestInfo =>
+//      case info: org.makerarg.contactscrapper.RequestInfo =>
 //        infoToContacts(info)
 //    })
 //    .via(cacheContactFlow)
 //    .mergeSubstreams.async
 //    .to(Sink.foreach(writeToDBFromCache))
     .to(Sink.ignore)
-
-  val graph3: RunnableGraph[NotUsed] = source
-    .via(coordinatesToRequestInfoFlow)
-    .mapConcat(identity)
-    .groupBy(
-      maxSubstreams = 2,
-      _.source.id,
-      allowClosedSubstreamRecreation = true)
-    .mapConcat({ info =>
-      import RawContact.decodeEvent
-      val contacts = infoToContacts(info)
-      println(contacts)
-      contacts
-    })
-    .to(Sink.foreach(writeToDB))
 
 }

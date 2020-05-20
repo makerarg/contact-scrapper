@@ -1,20 +1,20 @@
-package model
+package org.makerarg.contactscrapper.model
 
 import eu.timepit.refined.api._
 import eu.timepit.refined.string._
-import thirdparties.{MegaFlexContact, OrmiFlexContact, RawContact}
+import org.makerarg.contactscrapper.thirdparties.{MegaFlexContact, OrmiFlexContact, RawContact}
 
 import scala.util.{Success, Try}
 
 case class Contact(
-  id: String,
-  storeName: Option[String],
-  name: String,
-  location: Option[Location],
-  phoneNumber: Seq[model.Contact.PhoneNumber],
-  emailAddress: Seq[Contact.EmailAddress],
-  website: Option[Contact.Website],
-  source: String
+                    id: String,
+                    storeName: Option[String],
+                    name: String,
+                    location: Option[Location],
+                    phoneNumber: Seq[org.makerarg.contactscrapper.model.Contact.PhoneNumber],
+                    emailAddress: Seq[Contact.EmailAddress],
+                    website: Option[Contact.Website],
+                    source: String
 )
 object Contact {
   /** https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address */

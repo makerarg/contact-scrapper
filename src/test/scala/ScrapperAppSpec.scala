@@ -1,17 +1,16 @@
 import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.stream.scaladsl.{Flow, Sink, Source, StreamConverters}
+import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.util.ByteString
-import cache.CaffeineCache
 import cats.effect.{ContextShift, IO}
-import db.DBConfig
-import model.{Contact, ContactSource, Coordinates, MegaFlex, OrmiFlex}
+import org.makerarg.contactscrapper.LocationReader
+import org.makerarg.contactscrapper.cache.CaffeineCache
+import org.makerarg.contactscrapper.db.{ContactRepo, DBConfig}
+import org.makerarg.contactscrapper.model._
+import org.makerarg.contactscrapper.scrapper.{RequestInfo, StreamingScrapper}
 import org.scalatest.{FreeSpec, Matchers}
-import scalacache.modes.try_._
-import thirdparties.{MegaFlexContact, OrmiFlexContact}
 
 import scala.concurrent.ExecutionContext
-import scala.util.{Failure, Success}
 
 object DummyScrapperApp extends App {
   implicit val actorSystem = ActorSystem("ScrapSys")
@@ -58,7 +57,7 @@ object DummyScrapperApp extends App {
       Source.fromIterator(() => List(minimalContact).iterator)
     }
     .via(Flow.fromFunction[Contact, Option[String]](contact => {
-      cache.contactCache.put(contact.id)(contact) match {
+      org.makerarg.contactscrapper.cache.contactCache.put(contact.id)(contact) match {
         case Success(_) => Some(contact.id)
         case Failure(ex) =>
           println(s"contactCache.put failed with ex ${ex.getMessage}")
@@ -71,7 +70,7 @@ object DummyScrapperApp extends App {
     /*
     .to(Sink.foreach {
       case Some(id) =>
-        cache.contactCache.get(id) match {
+        org.makerarg.contactscrapper.cache.contactCache.get(id) match {
           case Success(contact) =>
             contact.map(repo.safeInsertContact(_).unsafeRunAsync {
               case Right(_) => ()
