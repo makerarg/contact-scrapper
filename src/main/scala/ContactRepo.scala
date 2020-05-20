@@ -12,7 +12,7 @@ class ContactRepo(dBConfig: DBConfig) {
   import ContactQueries._
 
   def safeInsertContact(contact: Contact): IO[Unit] = {
-    println(s"safeInsertContact inserting ${contact}")
+    println(s"safeInsertContact ${contact}")
     (for {
       _ <- insertIO(contact)
       _ <- insertEmailsIO(contact)

@@ -52,11 +52,19 @@ object ContactRepoSpec extends App {
   )
 
   repo.safeWipe.unsafeRunSync
-  repo.safeInsertContact(fullContact).unsafeRunSync
-  repo.safeInsertContact(minimalContact).unsafeRunSync
-  repo.safeInsertContactList(List(
-    fullContact.modify(_.id).setTo("id3"),
-    minimalContact.modify(_.id).setTo("id4")
-  ))
+
+  for (i <- 1 to 1000) {
+    repo.safeInsertContact(
+      fullContact
+        .modify(_.id).setTo(s"full-${i}")
+        .modify(_.emailAddress).setTo(fullContact.emailAddress.flatMap(x => emailOpt(s"$x-$i")))
+        .modify(_.phoneNumber).setTo(Seq.empty)
+    ).unsafeRunSync
+    repo.safeInsertContact(
+      minimalContact
+        .modify(_.id).setTo(s"min-${i}")
+    ).unsafeRunSync
+  }
+
   repo.safeWipe.unsafeRunSync
 }

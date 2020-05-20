@@ -110,15 +110,8 @@ class StreamingScrapper(cache: CaffeineCache, repo: ContactRepo)(implicit actorS
     case _ => ()
   }
   val writeToDB: Contact => Unit = { contact =>
-    repo.safeInsertContact(contact).unsafeRunAsync {
-      case Right(_) =>
-        println(s"Successful DB Insert ${contact.id}")
-        ()
-      case Left(ex) =>
-        println(s"DB write failed for ${contact.id}")
-        println(ex.getMessage)
-        ()
-    }
+    /** The async version of this never writes */
+    repo.safeInsertContact(contact).unsafeRunSync()
   }
 
 
@@ -178,10 +171,6 @@ class StreamingScrapper(cache: CaffeineCache, repo: ContactRepo)(implicit actorS
       println(contacts)
       contacts
     })
-//    .via(cacheContactFlow)
-//    .to(Sink.foreach(writeToDBFromCache))
-    //TODO: The database is timing out (too many connections)!!!!!!!
     .to(Sink.foreach(writeToDB))
-//    .mergeSubstreams
 
 }
