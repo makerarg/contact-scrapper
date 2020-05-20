@@ -21,6 +21,16 @@ class ContactRepo(dBConfig: DBConfig) {
     } yield ()).transact(dBConfig.transactor)
   }
 
+  def safeInsertContactList(contacts: List[Contact]): IO[Unit] = {
+    println(s"safeInsertContactList size: ${contacts.size}")
+    (for {
+      _ <- insertMany(contacts)
+      _ <- insertManyEmailsIO(contacts)
+      _ <- insertManyPhonesIO(contacts)
+      _ <- insertManyLocationsIO(contacts)
+    } yield ()).transact(dBConfig.transactor)
+  }
+
   def safeWipe: IO[Unit] = {
     val t = dBConfig.transactor
     for {
@@ -59,7 +69,7 @@ object ContactQueries {
     }
   }
 
-  def insertIO(contact: Contact): ConnectionIO[Unit] = {
+  def insertIO(contact: Contact): ConnectionIO[Int] = {
     println(s"insertIO ${contact.id}")
     val sql =
       """
@@ -72,7 +82,7 @@ object ContactQueries {
         |) VALUES (?, ?, ?, ?, ?);
       """.stripMargin
 
-    Query[ContactRow, Unit](sql).unique(contact.toContactRow)
+    Update[ContactRow](sql).run(contact.toContactRow)
   }
 
   def insertMany(contacts: List[Contact]): ConnectionIO[Int] = {
@@ -103,6 +113,19 @@ object ContactQueries {
     Update[EmailRow](sql).updateMany(contact.toEmailRows)
   }
 
+  def insertManyEmailsIO(contacts: List[Contact]): ConnectionIO[Int] = {
+    println(s"insertManyEmailsIO ${contacts.size}")
+    val sql =
+      """
+        |INSERT INTO `contact_email_address`(
+        |    `contact_id`,
+        |    `email_address`
+        |) VALUES (?, ?)
+        """.stripMargin
+
+    Update[EmailRow](sql).updateMany(contacts.flatMap(_.toEmailRows))
+  }
+
   def insertPhonesIO(contact: Contact): ConnectionIO[Int] = {
     println(s"insertPhonesIO ${contact.id}")
     val sql =
@@ -116,7 +139,20 @@ object ContactQueries {
     Update[PhoneRow](sql).updateMany(contact.toPhoneRows)
   }
 
-  def insertLocationIO(contact: Contact): ConnectionIO[Unit] = {
+  def insertManyPhonesIO(contacts: List[Contact]): ConnectionIO[Int] = {
+    println(s"insertManyPhonesIO ${contacts.size}")
+    val sql =
+      """
+        |INSERT INTO `contact_phone_number`(
+        |    `contact_id`,
+        |    `phone_number`
+        |) VALUES (?, ?)
+        """.stripMargin
+
+    Update[PhoneRow](sql).updateMany(contacts.flatMap(_.toPhoneRows))
+  }
+
+  def insertLocationIO(contact: Contact): ConnectionIO[Int] = {
     println(s"insertLocationIO ${contact.id}")
 
     contact.toLocationRow match {
@@ -134,11 +170,30 @@ object ContactQueries {
             |    `longitude`
             |) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
           """.stripMargin
-        Query[LocationRow, Unit](sql).unique(locationRow)
+        Update[LocationRow](sql).run(locationRow)
 
       case None =>
-        AsyncConnectionIO.pure(())
+        AsyncConnectionIO.pure(1)
     }
+  }
+
+  def insertManyLocationsIO(contacts: List[Contact]): ConnectionIO[Int] = {
+    println(s"insertManyLocationsIO ${contacts.size}")
+    val sql =
+      """
+        |INSERT INTO `contact_location`(
+        |    `contact_id`,
+        |    `address`,
+        |    `city`,
+        |    `state`,
+        |    `country`,
+        |    `zip_code`,
+        |    `latitude`,
+        |    `longitude`
+        |) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      """.stripMargin
+
+    Update[LocationRow](sql).updateMany(contacts.flatMap(_.toLocationRow))
   }
 
   def wipe: doobie.Update0 = {

@@ -1,4 +1,5 @@
 import cats.effect.{ContextShift, IO}
+import com.softwaremill.quicklens._
 import db.DBConfig
 import eu.timepit.refined.api.RefType
 import model.Contact.{EmailAddress, PhoneNumber, Website}
@@ -53,5 +54,9 @@ object ContactRepoSpec extends App {
   repo.safeWipe.unsafeRunSync
   repo.safeInsertContact(fullContact).unsafeRunSync
   repo.safeInsertContact(minimalContact).unsafeRunSync
+  repo.safeInsertContactList(List(
+    fullContact.modify(_.id).setTo("id3"),
+    minimalContact.modify(_.id).setTo("id4")
+  ))
   repo.safeWipe.unsafeRunSync
 }
