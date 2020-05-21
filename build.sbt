@@ -1,4 +1,4 @@
-name := "contact-org.makerarg.contactscrapper.scrapper"
+name := "contact-scrapper"
 
 version := "0.1"
 

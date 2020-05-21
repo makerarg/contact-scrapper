@@ -2,7 +2,7 @@ package org.makerarg.contactscrapper.scrapper
 
 import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.stream.scaladsl.{Flow, RunnableGraph, Source}
+import akka.stream.scaladsl.{RunnableGraph, Source}
 import org.makerarg.contactscrapper.LocationReader
 import org.makerarg.contactscrapper.cache.CaffeineCache
 import org.makerarg.contactscrapper.db.ContactRepo
@@ -17,9 +17,12 @@ trait Scrapper {
   val graph: RunnableGraph[NotUsed]
 
   val source: Source[Coordinates, NotUsed] = LocationReader.coordinateSource
-  val writeToDB: Contact => Unit = { contact =>
-    /** The async version of this never writes */
-    repo.safeInsertContact(contact).unsafeRunSync()
+  val writeToDB: Contact => Unit = repo.safeInsertContact(_).unsafeRunSync()
+  val writeToDBAsync: Contact => Unit = { contact =>
+    repo.safeInsertContact(contact).unsafeRunAsync({
+      case Right(_) => println(s"Write success. ContactId: ${contact.id}")
+      case Left(_) => println("Write failure")
+    })
   }
 
   val coordinatesToRequestInfo: Coordinates => List[RequestInfo] = { coordinates =>

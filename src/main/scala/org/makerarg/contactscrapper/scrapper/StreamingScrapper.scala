@@ -29,7 +29,7 @@ class StreamingScrapper(
 )(implicit val actorSystem: ActorSystem) extends Scrapper {
 
   /** Make a Source that will parse [[ByteString]]s and materialize as an [[OutputStream]]  */
-  def parsingFlow[R <: RawContact](source: Source[ByteString, _])(implicit decoder: Decoder[R]): Source[Contact, _] = {
+  def parseStream[R <: RawContact](source: Source[ByteString, _])(implicit decoder: Decoder[R]): Source[Contact, _] = {
     source
       .log("Parsing chunks")
       .via(CirceStreamSupport.decode[R](AsyncParser.UnwrapArray))
@@ -37,51 +37,42 @@ class StreamingScrapper(
   }
 
   /** Make a streamed GET request to the given url and return the source as a Readable object  */
-  def requestStreamed(url: String): geny.Readable = {
+  private val streamedRequest: String => geny.Readable = { url =>
     requests
       .get
       .stream(url)
   }
 
-  val requestToStream: RequestInfo => Source[ByteString, _] = { info =>
+  private val requestToStream: RequestInfo => Source[ByteString, _] = { info =>
     val url = info.source.url(info.coordinates)
     println(s"Making streamed request to $url")
 
-    requestStreamed(url).readBytesThrough(inputStream => {
+    streamedRequest(url).readBytesThrough(inputStream => {
       StreamConverters.fromInputStream(() => inputStream)
     })
   }
 
   val infoToContactSource: RequestInfo => Source[Contact, _] = { info =>
     info.source match {
-      case OrmiFlex => parsingFlow[OrmiFlexContact](requestToStream(info))
-      case MegaFlex => parsingFlow[MegaFlexContact](requestToStream(info))
+      case OrmiFlex => parseStream[OrmiFlexContact](requestToStream(info))
+      case MegaFlex => parseStream[MegaFlexContact](requestToStream(info))
     }
   }
 
-  val cacheContactFlow: Flow[Contact, Option[ContactId], NotUsed] = {
-    Flow.fromFunction[Contact, Option[ContactId]](contact => {
-      cache.contactCache.put(contact.id)(contact) match {
-        case Success(_) =>
-          println(s"Successful cache write with id: ${contact.id}")
-
-          Some(contact.id)
-        case Failure(ex) =>
-          println(s"contactCache.put failed with ex ${ex.getMessage}")
-          None
-      }
-    })
+  val cacheContact: Contact => Option[ContactId] = { contact =>
+    cache.contactCache.put(contact.id)(contact) match {
+      case Success(_) =>
+        println(s"Successful cache write. id: ${contact.id}")
+        //TODO: Send message to source actor
+        Some(contact.id)
+      case Failure(ex) => println(s"Failed cache write. ${ex.getMessage}"); None
+    }
   }
 
   val writeToDBFromCache: ContactId => Unit = { id =>
     cache.contactCache.get(id) match {
-      case Success(contact) =>
-        contact.foreach(repo.safeInsertContact(_).unsafeRunAsyncAndForget())
-        ()
-      case Failure(ex) =>
-        println(s"Cache retrieval failed for ${id}")
-        println(ex.getMessage)
-        ()
+      case Success(_) => writeToDBAsync
+      case Failure(ex) => println(s"Failed cache retrieve. ${id} - ${ex.getMessage}")
     }
   }
 
@@ -101,13 +92,8 @@ class StreamingScrapper(
       allowClosedSubstreamRecreation = true)
     .async
     .flatMapConcat(infoToContactSource)
-    .via(cacheContactFlow)
-//    .mergeSubstreams.async
-//    .to(Sink.foreach(writeToDBFromCache))
-    .to(Sink.foreach(println(_)))
-
-  val writeSource: Source[ContactId, NotUsed] = Source.empty[ContactId]
-  val readSideGraph: RunnableGraph[NotUsed] = Source.empty.to(Sink.ignore)
+    .via(Flow.fromFunction[Contact, Option[ContactId]](cacheContact))
+    .to(Sink.ignore)
 
   /**
    * TODO: Set up an actor source that receives `ContactId`s, looks them up in the cache and writes to the DB.
