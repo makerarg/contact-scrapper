@@ -1,26 +1,22 @@
 package org.makerarg.contactscrapper.model
 
 import eu.timepit.refined.api._
-import eu.timepit.refined.string._
+import org.makerarg.contactscrapper._
 import org.makerarg.contactscrapper.thirdparties.{MegaFlexContact, OrmiFlexContact, RawContact}
 
 import scala.util.{Success, Try}
 
 case class Contact(
-                    id: String,
-                    storeName: Option[String],
-                    name: String,
-                    location: Option[Location],
-                    phoneNumber: Seq[org.makerarg.contactscrapper.model.Contact.PhoneNumber],
-                    emailAddress: Seq[Contact.EmailAddress],
-                    website: Option[Contact.Website],
-                    source: String
+  id: ContactId,
+  storeName: Option[String],
+  name: String,
+  location: Option[Location],
+  phoneNumber: Seq[PhoneNumber],
+  emailAddress: Seq[EmailAddress],
+  website: Option[Website],
+  source: String
 )
 object Contact {
-  /** https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address */
-  type EmailAddress = String Refined MatchesRegex["""^[a-zA-Z0-9\.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$"""]
-  type Website = String Refined Url
-  type PhoneNumber = String Refined ValidLong
 
   val emailOpt: String => Option[EmailAddress] = RefType.applyRef[EmailAddress](_).toOption
   val websiteOpt: String => Option[Website] = RefType.applyRef[Website](_).toOption

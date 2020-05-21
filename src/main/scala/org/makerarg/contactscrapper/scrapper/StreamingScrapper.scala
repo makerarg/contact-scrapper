@@ -8,6 +8,7 @@ import akka.stream.scaladsl.{Flow, RunnableGraph, Sink, Source, StreamConverters
 import akka.util.ByteString
 import io.circe.Decoder
 import io.circe.generic.auto._
+import org.makerarg.contactscrapper.ContactId
 import org.makerarg.contactscrapper.cache.CaffeineCache
 import org.makerarg.contactscrapper.db.ContactRepo
 import org.makerarg.contactscrapper.model._
@@ -63,6 +64,7 @@ class StreamingScrapper(
       cache.contactCache.put(contact.id)(contact) match {
         case Success(_) =>
           println(s"Successful cache write with id: ${contact.id}")
+
           Some(contact.id)
         case Failure(ex) =>
           println(s"contactCache.put failed with ex ${ex.getMessage}")
@@ -70,7 +72,7 @@ class StreamingScrapper(
       }
     })
   }
-  val writeToDBFromCache: Option[String] => Unit = {
+  val writeToDBFromCache: Option[ContactId] => Unit = {
     case Some(id) =>
       cache.contactCache.get(id) match {
         case Success(contact) =>
@@ -110,5 +112,8 @@ class StreamingScrapper(
 //    .mergeSubstreams.async
 //    .to(Sink.foreach(writeToDBFromCache))
     .to(Sink.foreach(println(_)))
+
+  val writeSource: Source[ContactId, NotUsed] = Source.empty[ContactId]
+  val readSideGraph: RunnableGraph[NotUsed] = Source.empty.to(Sink.ignore)
 
 }
