@@ -1,6 +1,6 @@
 import cats.effect.{ContextShift, IO}
 import com.softwaremill.quicklens._
-import org.makerarg.contactscrapper.db.{ContactRepo, DBConfig, TestDBConfig}
+import org.makerarg.contactscrapper.db.{ContactRepo, TestDBConfig}
 import eu.timepit.refined.api.RefType
 import org.makerarg.contactscrapper._
 import org.makerarg.contactscrapper.model._

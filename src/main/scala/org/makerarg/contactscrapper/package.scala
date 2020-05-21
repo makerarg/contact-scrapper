@@ -2,6 +2,7 @@ package org.makerarg
 
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.string.{MatchesRegex, Url, ValidLong}
+import org.makerarg.contactscrapper.model.{Coordinates, Latitude, Longitude}
 
 package object contactscrapper {
 
@@ -11,4 +12,6 @@ package object contactscrapper {
   type PhoneNumber = String Refined ValidLong
 
   type ContactId = String
+
+  val defaultCoordinates: Coordinates = Coordinates(Latitude(0), Longitude(0))
 }

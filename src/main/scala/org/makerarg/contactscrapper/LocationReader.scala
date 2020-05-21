@@ -35,23 +35,15 @@ object LocationReader {
       rawValues = Seq(splitLine(1), splitLine(2).split(",").head)
       values = rawValues.map(_.replaceAll("""\(""", ""))
       coordinates <- Try(values.map(_.toDouble)).toEither
-    } yield Coordinates(Latitude(coordinates(1)), Longitude(coordinates.head))) match {
-      case Left(err) =>
-        println(err)
-        Coordinates(Latitude(0), Longitude(0))
-      case Right(coordinates) => coordinates
-    }
+    } yield Coordinates(Latitude(coordinates(1)), Longitude(coordinates.head)))
+      .getOrElse(defaultCoordinates)
   }
   private val PBACsvLineToCoordinateParser: ReadResult[PBAData] => Coordinates = { readResult =>
     println("PBA row")
     (for {
       line <- readResult
-    } yield Coordinates(Latitude(line.lat), Longitude(line.long))) match {
-      case Left(err) =>
-        println(err)
-        Coordinates(Latitude(0), Longitude(0))
-      case Right(coordinates) => coordinates
-    }
+    } yield Coordinates(Latitude(line.lat), Longitude(line.long)))
+      .getOrElse(defaultCoordinates)
   }
 
   /** Make a [[Source]] out of the [[CsvReader]] iterators */
