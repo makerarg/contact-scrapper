@@ -7,7 +7,6 @@ import org.makerarg.contactscrapper.LocationReader
 import org.makerarg.contactscrapper.cache.CaffeineCache
 import org.makerarg.contactscrapper.db.ContactRepo
 import org.makerarg.contactscrapper.model.{Contact, ContactSource, Coordinates, MegaFlex, OrmiFlex}
-import org.makerarg.contactscrapper.thirdparties.RawContact
 
 trait Scrapper {
 
@@ -23,14 +22,11 @@ trait Scrapper {
     repo.safeInsertContact(contact).unsafeRunSync()
   }
 
-  def coordinatesToRequestInfoFlow[R <: RawContact]: Flow[Coordinates, List[RequestInfo], NotUsed] = {
-    Flow.fromFunction[Coordinates, List[RequestInfo]]{ coordinates =>
-      println(s"$coordinates")
-      List(
-        RequestInfo(OrmiFlex, coordinates),
-        RequestInfo(MegaFlex, coordinates)
-      )
-    }
+  val coordinatesToRequestInfo: Coordinates => List[RequestInfo] = { coordinates =>
+    List(
+      RequestInfo(OrmiFlex, coordinates),
+      RequestInfo(MegaFlex, coordinates)
+    )
   }
 }
 

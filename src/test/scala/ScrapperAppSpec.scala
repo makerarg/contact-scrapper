@@ -53,8 +53,7 @@ class ScrapperAppSpec extends FreeSpec with Matchers {
     "should go through every coordinate combination" in {
       var n = 0
       LocationReader.coordinateSource
-        .via(streamingScrapper.coordinatesToRequestInfoFlow)
-        .mapConcat(identity)
+        .mapConcat(streamingScrapper.coordinatesToRequestInfo)
         .flatMapConcat { _ =>
           println("parsing 'contact'")
           n += 1
@@ -70,8 +69,7 @@ class ScrapperAppSpec extends FreeSpec with Matchers {
     "should go through every contact source" in {
       var n = 0
       LocationReader.coordinateSource
-        .via(streamingScrapper.coordinatesToRequestInfoFlow)
-        .mapConcat(identity)
+        .mapConcat(streamingScrapper.coordinatesToRequestInfo)
         .flatMapConcat(streamingScrapper.infoToContactSource)
         .via(Flow.fromFunction(_ => n += 1))
         .to(Sink.ignore)
@@ -85,8 +83,7 @@ class ScrapperAppSpec extends FreeSpec with Matchers {
       var n = 0
 
       LocationReader.coordinateSource
-        .via(streamingScrapper.coordinatesToRequestInfoFlow)
-        .mapConcat(identity)
+        .mapConcat(streamingScrapper.coordinatesToRequestInfo)
         .groupBy(
           maxSubstreams = 2,
           _.source,
@@ -104,8 +101,7 @@ class ScrapperAppSpec extends FreeSpec with Matchers {
 
     "should parse results" in {
       streamingScrapper.singleItemSource
-        .via(streamingScrapper.coordinatesToRequestInfoFlow)
-        .mapConcat(identity)
+        .mapConcat(streamingScrapper.coordinatesToRequestInfo)
         .groupBy(
           maxSubstreams = 2,
           _.source,

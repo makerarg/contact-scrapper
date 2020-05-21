@@ -3,7 +3,10 @@ package org.makerarg.contactscrapper.scrapper
 import java.io.OutputStream
 
 import akka.NotUsed
-import akka.actor.ActorSystem
+import akka.Done
+import akka.actor.{ActorRef, ActorSystem}
+import akka.stream.OverflowStrategy
+import akka.stream.CompletionStrategy
 import akka.stream.scaladsl.{Flow, RunnableGraph, Sink, Source, StreamConverters}
 import akka.util.ByteString
 import io.circe.Decoder
@@ -28,10 +31,7 @@ class StreamingScrapper(
   /** Make a Source that will parse [[ByteString]]s and materialize as an [[OutputStream]]  */
   def parsingFlow[R <: RawContact](source: Source[ByteString, _])(implicit decoder: Decoder[R]): Source[Contact, _] = {
     source
-      .via(Flow.fromFunction[ByteString, ByteString]( bs => {
-        println(s"Getting chunks ${bs}")
-        bs
-      }))
+      .log("Parsing chunks")
       .via(CirceStreamSupport.decode[R](AsyncParser.UnwrapArray))
       .map(Contact(_))
   }
@@ -40,12 +40,12 @@ class StreamingScrapper(
   def requestStreamed(url: String): geny.Readable = {
     requests
       .get
-      .stream(url, onHeadersReceived = { sh => println(s"SH arrived: $sh")})
+      .stream(url)
   }
 
   val requestToStream: RequestInfo => Source[ByteString, _] = { info =>
     val url = info.source.url(info.coordinates)
-    println(s"making streamed request to $url")
+    println(s"Making streamed request to $url")
 
     requestStreamed(url).readBytesThrough(inputStream => {
       StreamConverters.fromInputStream(() => inputStream)
@@ -59,8 +59,8 @@ class StreamingScrapper(
     }
   }
 
-  val cacheContactFlow: Flow[Contact, Option[String], NotUsed] = {
-    Flow.fromFunction[Contact, Option[String]](contact => {
+  val cacheContactFlow: Flow[Contact, Option[ContactId], NotUsed] = {
+    Flow.fromFunction[Contact, Option[ContactId]](contact => {
       cache.contactCache.put(contact.id)(contact) match {
         case Success(_) =>
           println(s"Successful cache write with id: ${contact.id}")
@@ -72,6 +72,7 @@ class StreamingScrapper(
       }
     })
   }
+
   val writeToDBFromCache: ContactId => Unit = { id =>
     cache.contactCache.get(id) match {
       case Success(contact) =>
@@ -93,8 +94,7 @@ class StreamingScrapper(
    *  - Merge into single Sink that writes to the DB
    */
   val graph: RunnableGraph[NotUsed] = source
-    .via(coordinatesToRequestInfoFlow)
-    .mapConcat(identity)
+    .mapConcat(coordinatesToRequestInfo)
     .groupBy(
       maxSubstreams = 2,
       _.source.id,
@@ -108,5 +108,20 @@ class StreamingScrapper(
 
   val writeSource: Source[ContactId, NotUsed] = Source.empty[ContactId]
   val readSideGraph: RunnableGraph[NotUsed] = Source.empty.to(Sink.ignore)
+
+  /**
+   * TODO: Set up an actor source that receives `ContactId`s, looks them up in the cache and writes to the DB.
+   */
+  val writeSource: Source[Any, ActorRef] = Source.actorRef(
+    completionMatcher = {
+      case Done =>
+        // complete stream immediately if we send it Done
+        CompletionStrategy.immediately
+    },
+    // never fail the stream because of a message
+    failureMatcher = PartialFunction.empty,
+    bufferSize = 100,
+    overflowStrategy = OverflowStrategy.dropHead)
+  val readSideActor: ActorRef = writeSource.to(Sink.foreach(println)).run()
 
 }

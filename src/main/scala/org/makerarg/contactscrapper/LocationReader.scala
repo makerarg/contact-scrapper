@@ -11,6 +11,7 @@ import scala.util.Try
 
 object LocationReader {
   import kantan.csv.ops._
+  /* TODO: Make these defs... can't execute multiple test suites with vals */
 
   /** Iterators that will read csv lines as their respective case class */
   val CABAReaderIterator: Iterator[ReadResult[CABAData]] = {

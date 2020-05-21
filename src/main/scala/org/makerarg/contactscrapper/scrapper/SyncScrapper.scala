@@ -34,8 +34,7 @@ class SyncScrapper(
    * Simplest graph.
    */
   val graph: RunnableGraph[NotUsed] = source
-    .via(coordinatesToRequestInfoFlow)
-    .mapConcat(identity)
+    .mapConcat(coordinatesToRequestInfo)
     .groupBy(
       maxSubstreams = 2,
       _.source.id,
