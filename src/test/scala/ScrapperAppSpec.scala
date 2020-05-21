@@ -4,7 +4,7 @@ import akka.stream.scaladsl.{Flow, Sink, Source}
 import cats.effect.{ContextShift, IO}
 import org.makerarg.contactscrapper.LocationReader
 import org.makerarg.contactscrapper.cache.CaffeineCache
-import org.makerarg.contactscrapper.db.{ContactRepo, DBConfig}
+import org.makerarg.contactscrapper.db.{ContactRepo, TestDBConfig}
 import org.makerarg.contactscrapper.model._
 import org.makerarg.contactscrapper.scrapper.{RequestInfo, StreamingScrapper}
 import org.scalatest.{FreeSpec, Matchers}
@@ -17,7 +17,7 @@ class ScrapperAppSpec extends FreeSpec with Matchers {
   implicit val cs: ContextShift[IO] = IO.contextShift(ec)
 
   val cache = new CaffeineCache
-  val repo = new ContactRepo(new DBConfig)
+  val repo = new ContactRepo(new TestDBConfig)
 
 
   val streamingScrapper = new StreamingScrapper(cache, repo) {

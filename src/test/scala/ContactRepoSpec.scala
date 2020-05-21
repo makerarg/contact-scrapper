@@ -1,17 +1,18 @@
 import cats.effect.{ContextShift, IO}
 import com.softwaremill.quicklens._
-import org.makerarg.contactscrapper.db.{ContactRepo, DBConfig}
+import org.makerarg.contactscrapper.db.{ContactRepo, DBConfig, TestDBConfig}
 import eu.timepit.refined.api.RefType
 import org.makerarg.contactscrapper._
 import org.makerarg.contactscrapper.model._
+import org.scalatest.{FreeSpec, Matchers}
 
 import scala.concurrent.ExecutionContext
 
-object ContactRepoSpec extends App {
+class ContactRepoSpec extends FreeSpec with Matchers {
 
   implicit val ec: ExecutionContext = ExecutionContext.global
   implicit val cs: ContextShift[IO] = IO.contextShift(ec)
-  val repo = new ContactRepo(new DBConfig)
+  val repo = new ContactRepo(new TestDBConfig)
 
   val phoneNumber: Option[PhoneNumber] = RefType.applyRef[PhoneNumber]("1153539333").toOption
   val website: Option[Website] = RefType.applyRef[Website]("www.website.com").toOption
@@ -39,7 +40,6 @@ object ContactRepoSpec extends App {
     website = website,
     source = "Test"
   )
-
   val minimalContact: Contact = Contact(
     id = "id2",
     storeName = None,
@@ -51,20 +51,34 @@ object ContactRepoSpec extends App {
     source = "Test"
   )
 
-  repo.safeWipe.unsafeRunSync
+  "should insert a bunch of contacts" in {
+    repo.safeWipe.unsafeRunSync
 
-  for (i <- 1 to 1000) {
-    repo.safeInsertContact(
-      fullContact
-        .modify(_.id).setTo(s"full-${i}")
-        .modify(_.emailAddress).setTo(fullContact.emailAddress.flatMap(x => emailOpt(s"$x-$i")))
-        .modify(_.phoneNumber).setTo(Seq.empty)
-    ).unsafeRunSync
-    repo.safeInsertContact(
-      minimalContact
-        .modify(_.id).setTo(s"min-${i}")
-    ).unsafeRunSync
+    for (i <- 1 to 1000) {
+      repo.safeInsertContact(
+        fullContact
+          .modify(_.id).setTo(s"full-${i}")
+          .modify(_.emailAddress).setTo(fullContact.emailAddress.flatMap(x => emailOpt(s"$x-$i")))
+          .modify(_.phoneNumber).setTo(Seq.empty)
+      ).unsafeRunSync
+      repo.safeInsertContact(
+        minimalContact
+          .modify(_.id).setTo(s"min-${i}")
+      ).unsafeRunSync
+    }
+
+    repo.safeWipe.unsafeRunSync
   }
 
-  repo.safeWipe.unsafeRunSync
+
+  "should do it async as well" in {
+    repo.safeWipe.unsafeRunSync
+    repo.safeInsertContact(fullContact).unsafeRunAsync({
+      case Right(_) => println("Write success")
+      case Left(_) => println("Write failure")
+    })
+
+    Thread.sleep(2000)
+    repo.safeWipe.unsafeRunSync()
+  }
 }

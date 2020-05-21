@@ -72,23 +72,16 @@ class StreamingScrapper(
       }
     })
   }
-  val writeToDBFromCache: Option[ContactId] => Unit = {
-    case Some(id) =>
-      cache.contactCache.get(id) match {
-        case Success(contact) =>
-          contact.map(repo.safeInsertContact(_).unsafeRunAsync {
-            case Right(_) => ()
-            case Left(ex) =>
-              println(s"DB write failed for ${id}")
-              println(ex.getMessage)
-              ()
-          })
-        case Failure(ex) =>
-          println(s"Cache retrieval failed for ${id}")
-          println(ex.getMessage)
-          ()
-      }
-    case _ => ()
+  val writeToDBFromCache: ContactId => Unit = { id =>
+    cache.contactCache.get(id) match {
+      case Success(contact) =>
+        contact.foreach(repo.safeInsertContact(_).unsafeRunAsyncAndForget())
+        ()
+      case Failure(ex) =>
+        println(s"Cache retrieval failed for ${id}")
+        println(ex.getMessage)
+        ()
+    }
   }
 
   /**
