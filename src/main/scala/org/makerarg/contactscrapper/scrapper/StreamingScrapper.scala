@@ -1,13 +1,9 @@
 package org.makerarg.contactscrapper.scrapper
 
-import java.io.OutputStream
-
-import akka.NotUsed
-import akka.Done
+import akka.{Done, NotUsed}
 import akka.actor.{ActorRef, ActorSystem}
-import akka.stream.OverflowStrategy
-import akka.stream.CompletionStrategy
 import akka.stream.scaladsl.{Flow, RunnableGraph, Sink, Source, StreamConverters}
+import akka.stream.{CompletionStrategy, OverflowStrategy}
 import akka.util.ByteString
 import io.circe.Decoder
 import io.circe.generic.auto._
@@ -28,10 +24,9 @@ class StreamingScrapper(
   val repo: ContactRepo
 )(implicit val actorSystem: ActorSystem) extends Scrapper {
 
-  /** Make a Source that will parse [[ByteString]]s and materialize as an [[OutputStream]]  */
+  /** Transform [[ByteString]] input into [[Contact]]  */
   def parseStream[R <: RawContact](source: Source[ByteString, _])(implicit decoder: Decoder[R]): Source[Contact, _] = {
     source
-      .log("Parsing chunks")
       .via(CirceStreamSupport.decode[R](AsyncParser.UnwrapArray))
       .map(Contact(_))
   }
@@ -43,7 +38,7 @@ class StreamingScrapper(
       .stream(url)
   }
 
-  private val requestToStream: RequestInfo => Source[ByteString, _] = { info =>
+  private val requestToByteSource: RequestInfo => Source[ByteString, _] = { info =>
     val url = info.source.url(info.coordinates)
     println(s"Making streamed request to $url")
 
@@ -54,8 +49,8 @@ class StreamingScrapper(
 
   val infoToContactSource: RequestInfo => Source[Contact, _] = { info =>
     info.source match {
-      case OrmiFlex => parseStream[OrmiFlexContact](requestToStream(info))
-      case MegaFlex => parseStream[MegaFlexContact](requestToStream(info))
+      case OrmiFlex => parseStream[OrmiFlexContact](requestToByteSource(info))
+      case MegaFlex => parseStream[MegaFlexContact](requestToByteSource(info))
     }
   }
 
@@ -63,7 +58,6 @@ class StreamingScrapper(
     cache.contactCache.put(contact.id)(contact) match {
       case Success(_) =>
         println(s"Successful cache write. id: ${contact.id}")
-        //TODO: Send message to source actor
         Some(contact.id)
       case Failure(ex) => println(s"Failed cache write. ${ex.getMessage}"); None
     }
@@ -71,9 +65,29 @@ class StreamingScrapper(
 
   val writeToDBFromCache: ContactId => Unit = { id =>
     cache.contactCache.get(id) match {
-      case Success(_) => writeToDBAsync
+      case Success(contact) =>
+        println(s"Successful cache retrieve. ${id}")
+        contact.foreach(writeToDBAsync)
       case Failure(ex) => println(s"Failed cache retrieve. ${id} - ${ex.getMessage}")
     }
+  }
+
+  /** Helper function to let the [[writeActor]] know when to stop. */
+  private val completionMatcher: PartialFunction[Any, CompletionStrategy] = {
+    case Done => CompletionStrategy.immediately
+  }
+
+  /** An actor that will receive [[ContactId]]s, look them up in the cache and write to the DB. */
+  private val writeActor: ActorRef = {
+    Source.actorRef[ContactId](
+      completionMatcher,
+      failureMatcher = PartialFunction.empty,
+      bufferSize = 100,
+      overflowStrategy = OverflowStrategy.dropHead
+    )
+    .map(writeToDBFromCache)
+    .to(Sink.ignore)
+    .run()
   }
 
   /**
@@ -84,7 +98,7 @@ class StreamingScrapper(
    *  - Parse as [[Contact]]
    *  - Merge into single Sink that writes to the DB
    */
-  val graph: RunnableGraph[NotUsed] = source
+  val graph: RunnableGraph[NotUsed] = source.take(1)
     .mapConcat(coordinatesToRequestInfo)
     .groupBy(
       maxSubstreams = 2,
@@ -93,21 +107,7 @@ class StreamingScrapper(
     .async
     .flatMapConcat(infoToContactSource)
     .via(Flow.fromFunction[Contact, Option[ContactId]](cacheContact))
+    .map(_.foreach(writeActor ! _))
     .to(Sink.ignore)
-
-  /**
-   * TODO: Set up an actor source that receives `ContactId`s, looks them up in the cache and writes to the DB.
-   */
-  val writeSource: Source[Any, ActorRef] = Source.actorRef(
-    completionMatcher = {
-      case Done =>
-        // complete stream immediately if we send it Done
-        CompletionStrategy.immediately
-    },
-    // never fail the stream because of a message
-    failureMatcher = PartialFunction.empty,
-    bufferSize = 100,
-    overflowStrategy = OverflowStrategy.dropHead)
-  val readSideActor: ActorRef = writeSource.to(Sink.foreach(println)).run()
 
 }

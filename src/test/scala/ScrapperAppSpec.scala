@@ -19,7 +19,6 @@ class ScrapperAppSpec extends FreeSpec with Matchers {
   val cache = new CaffeineCache
   val repo = new ContactRepo(new TestDBConfig)
 
-
   val streamingScrapper = new StreamingScrapper(cache, repo) {
     val singleItemSource: Source[Coordinates, NotUsed] = LocationReader.coordinateSource.take(1)
 
