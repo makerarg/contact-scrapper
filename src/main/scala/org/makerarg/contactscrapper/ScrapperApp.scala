@@ -20,6 +20,9 @@ object ScrapperApp extends App {
   val syncScrapper = new SyncScrapper(cache, repo)
   val streamingScrapper = new StreamingScrapper(cache, repo)
 
-  streamingScrapper.graph.run()
+  (for {
+    _ <- repo.safeWipe
+    _ <- IO.pure(streamingScrapper.graph.run())
+  } yield ()).unsafeRunSync()
 
 }

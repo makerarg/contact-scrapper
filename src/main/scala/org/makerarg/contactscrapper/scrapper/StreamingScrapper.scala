@@ -105,7 +105,7 @@ class StreamingScrapper(
    *  - Parse as [[Contact]]
    *  - Merge into single Sink that writes to the DB
    */
-  val graph: RunnableGraph[NotUsed] = source.take(2)
+  val graph: RunnableGraph[NotUsed] = source
     .mapConcat(coordinatesToRequestInfo)
     .groupBy(
       maxSubstreams = 2,
