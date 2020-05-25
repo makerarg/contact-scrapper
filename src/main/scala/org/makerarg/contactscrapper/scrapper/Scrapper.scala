@@ -17,7 +17,12 @@ trait Scrapper {
   val graph: RunnableGraph[NotUsed]
 
   val source: Source[Coordinates, NotUsed] = LocationReader.coordinateSource
-  val writeToDB: Contact => Unit = repo.safeInsertContact(_).unsafeRunSync()
+  val writeToDB: Contact => Unit = { contact =>
+    repo.safeInsertContact(contact).attempt.unsafeRunSync() match {
+      case Left(ex) => println(s"Write error. ${ex}")
+      case Right(_) => println(s"Write successful. ${contact.id}")
+    }
+  }
   val writeToDBAsync: Contact => Unit = { contact =>
     repo.safeInsertContact(contact).unsafeRunAsync({
       case Right(_) => println(s"Write success. ContactId: ${contact.id}")

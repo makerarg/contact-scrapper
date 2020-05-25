@@ -5,6 +5,7 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.stream.scaladsl.{Flow, RunnableGraph, Sink, Source, StreamConverters}
 import akka.stream.{CompletionStrategy, OverflowStrategy}
 import akka.util.ByteString
+import cats.data.EitherT
 import io.circe.Decoder
 import io.circe.generic.auto._
 import org.makerarg.contactscrapper.ContactId
@@ -16,13 +17,14 @@ import org.mdedetrich.akka.stream.support.CirceStreamSupport
 import org.typelevel.jawn.AsyncParser
 import scalacache.modes.try_._
 
+import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 class StreamingScrapper(
   val cache: CaffeineCache,
   val repo: ContactRepo
-)(implicit val actorSystem: ActorSystem) extends Scrapper {
+)(implicit val actorSystem: ActorSystem, implicit val ec: ExecutionContext) extends Scrapper {
 
   /** Transform [[ByteString]] input into [[Contact]]  */
   def parseStream[R <: RawContact](source: Source[ByteString, _])(implicit decoder: Decoder[R]): Source[Contact, _] = {
@@ -55,11 +57,16 @@ class StreamingScrapper(
   }
 
   val cacheContact: Contact => Option[ContactId] = { contact =>
-    cache.contactCache.put(contact.id)(contact) match {
-      case Success(_) =>
-        println(s"Successful cache write. id: ${contact.id}")
-        Some(contact.id)
-      case Failure(ex) => println(s"Failed cache write. ${ex.getMessage}"); None
+    cache.contactCache.get(contact.id) match {
+      case Success(Some(_)) => println(s"Contact already cached. ${contact.id}"); None
+      case Success(None) =>
+        cache.contactCache.put(contact.id)(contact) match {
+          case Success(_) =>
+            println(s"Caching new contact. ${contact.id}")
+            Some(contact.id)
+          case Failure(ex) => println(s"Exception storing contact. ${contact.id} - ${ex}"); None
+        }
+      case Failure(ex) => println(s"Exception retreiving contact. ${contact.id} - ${ex}"); None
     }
   }
 
@@ -67,7 +74,7 @@ class StreamingScrapper(
     cache.contactCache.get(id) match {
       case Success(contact) =>
         println(s"Successful cache retrieve. ${id}")
-        contact.foreach(writeToDBAsync)
+        contact.foreach(writeToDB)
       case Failure(ex) => println(s"Failed cache retrieve. ${id} - ${ex.getMessage}")
     }
   }
@@ -98,7 +105,7 @@ class StreamingScrapper(
    *  - Parse as [[Contact]]
    *  - Merge into single Sink that writes to the DB
    */
-  val graph: RunnableGraph[NotUsed] = source.take(1)
+  val graph: RunnableGraph[NotUsed] = source.take(2)
     .mapConcat(coordinatesToRequestInfo)
     .groupBy(
       maxSubstreams = 2,

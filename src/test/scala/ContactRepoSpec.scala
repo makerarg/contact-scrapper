@@ -1,6 +1,6 @@
 import cats.effect.{ContextShift, IO}
 import com.softwaremill.quicklens._
-import org.makerarg.contactscrapper.db.{ContactRepo, TestDBConfig}
+import org.makerarg.contactscrapper.db.{ContactRepo, RoofieDBConfig, TestDBConfig}
 import eu.timepit.refined.api.RefType
 import org.makerarg.contactscrapper._
 import org.makerarg.contactscrapper.model._
@@ -12,7 +12,7 @@ class ContactRepoSpec extends FreeSpec with Matchers {
 
   implicit val ec: ExecutionContext = ExecutionContext.global
   implicit val cs: ContextShift[IO] = IO.contextShift(ec)
-  val repo = new ContactRepo(new TestDBConfig)
+  val repo = new ContactRepo(new RoofieDBConfig)
 
   val phoneNumber: Option[PhoneNumber] = RefType.applyRef[PhoneNumber]("1153539333").toOption
   val website: Option[Website] = RefType.applyRef[Website]("www.website.com").toOption
